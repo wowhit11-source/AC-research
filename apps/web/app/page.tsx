@@ -21,7 +21,18 @@ interface ResearchResponse {
     papers: any[];
   };
   meta: ResearchMeta;
+
 }
+
+function unwrap(arrOrObj: any): any[] {
+  if (Array.isArray(arrOrObj)) return arrOrObj;
+  if (arrOrObj && Array.isArray(arrOrObj.items)) return arrOrObj.items;
+  if (arrOrObj && Array.isArray(arrOrObj.results)) return arrOrObj.results;
+  return [];
+}
+
+
+
 
 const pillStyle = (active: boolean) => ({
   display: "inline-flex",
@@ -89,11 +100,25 @@ export default function Home() {
         throw new Error(t || `HTTP ${res.status}`);
       }
 
-      const json: ResearchResponse = await res.json();
-      setData(json);
+     const raw = await res.json();
+
+const normalized: ResearchResponse = {
+  ...raw,
+  results: {
+    dart: unwrap(raw?.results?.dart),
+    sec: unwrap(raw?.results?.sec),
+    youtube: unwrap(raw?.results?.youtube),
+    papers: unwrap(raw?.results?.papers),
+  },
+};
+
+setData(normalized);
+
 
       const priority: TabId[] = ["dart", "sec", "youtube", "papers"];
-      const firstNonEmpty = priority.find((k) => (json.results?.[k]?.length ?? 0) > 0) || "sec";
+     const firstNonEmpty =
+  priority.find(k => (normalized.results?.[k]?.length ?? 0) > 0) || "sec";
+
       setTab(firstNonEmpty);
     } catch (e: any) {
       setError(e?.message ? String(e.message) : "Failed to fetch");
