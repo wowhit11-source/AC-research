@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+env/
+.env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Secrets and env with keys
+.env.local
+.env.*.local
+*.pem
+secrets/
+.secrets
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs and cache
+*.log
+.cache/
+
+# Next.js
+.next/
+out/
+
+# Streamlit
+.streamlit/secrets.toml

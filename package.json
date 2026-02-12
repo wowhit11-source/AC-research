@@ -1,0 +1,9 @@
+{
+  "name": "ac-research-monorepo",
+  "private": true,
+  "scripts": {
+    "web": "npm run dev --prefix apps/web",
+    "web:build": "npm run build --prefix apps/web",
+    "api": "cd apps/api && uvicorn app.main:app --reload --port 8000"
+  }
+}

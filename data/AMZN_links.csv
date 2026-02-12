@@ -1,0 +1,6 @@
+source_type,url,published_date,ticker
+SEC,https://www.sec.gov/Archives/edgar/data/1018724/000101872426000004/amzn-20251231.htm,2026-02-06,AMZN
+SEC,https://www.sec.gov/Archives/edgar/data/1018724/000101872425000004/amzn-20241231.htm,2025-02-07,AMZN
+SEC,https://www.sec.gov/Archives/edgar/data/1018724/000101872424000008/amzn-20231231.htm,2024-02-02,AMZN
+SEC,https://www.sec.gov/Archives/edgar/data/1018724/000101872423000004/amzn-20221231.htm,2023-02-03,AMZN
+SEC,https://www.sec.gov/Archives/edgar/data/1018724/000101872422000005/amzn-20211231.htm,2022-02-04,AMZN
