@@ -23,13 +23,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 14 }}>리서치 보조 도구</div>
 
             <div style={{ display: "grid", gap: 10 }}>
-              {[
-               
-  { label: "ChatGPT", href: "https://chat.openai.com" },
-  { label: "Google Gemini", href: "https://gemini.google.com" },
-  { label: "Anthropic Claude", href: "https://claude.ai" },
-  { label: "Google NotebookLM", href: "https://notebooklm.google.com" },
+           {[
+  { label: "ChatGPT", href: "https://chat.openai.com", icon: "/chatgpt.svg" },
+  { label: "Google Gemini", href: "https://gemini.google.com", icon: "/gemini.svg" },
+  { label: "Anthropic Claude", href: "https://claude.ai", icon: "/claude.svg" },
+  { label: "Google NotebookLM", href: "https://notebooklm.google.com", icon: "/notebooklm.svg" },
 ].map((item) => (
+
 
                <a
   key={item.label}
@@ -49,15 +49,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     background: "rgba(255,255,255,0.02)",
                   }}
                 >
-                  <span
-                    style={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: 4,
-                      background: "rgba(255,255,255,0.12)",
-                      display: "inline-block",
-                    }}
-                  />
+                 <img
+  src={item.icon}
+  alt={item.label}
+  style={{
+    width: 20,
+    height: 20,
+    objectFit: "contain"
+  }}
+/>
+
                   <span style={{ fontSize: 14 }}>{item.label}</span>
                 </a>
               ))}
