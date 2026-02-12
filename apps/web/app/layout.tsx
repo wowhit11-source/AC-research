@@ -60,23 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             <div style={{ height: 18 }} />
 
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 14 }}>
-              <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 10 }}>실행 방법</div>
-              <div
-                style={{
-                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                  fontSize: 12,
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  borderRadius: 10,
-                  padding: 12,
-                  color: "#c9d1d9",
-                  lineHeight: 1.5,
-                }}
-              >
-                streamlit run app.py
-              </div>
-            </div>
+           
           </aside>
 
           <main style={{ flex: 1, padding: 28, boxSizing: "border-box" }}>{children}</main>
