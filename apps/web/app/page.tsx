@@ -15,10 +15,10 @@ interface ResearchResponse {
   query: string;
   slug: string;
   results: {
-    dart: { items: Record<string, unknown>[] } | null;
-    sec: { items: Record<string, unknown>[] } | null;
-    youtube: Record<string, unknown>[];
-    papers: Record<string, unknown>[];
+    dart: { items: any[] } | null;
+    sec: { items: any[] } | null;
+    youtube: any[];
+    papers: any[];
   };
   meta: ResearchMeta;
 }
@@ -72,7 +72,7 @@ export default function Home() {
     { id: 'papers', label: 'Papers', count: data?.results.papers?.length ?? 0 },
   ];
 
-  const currentItems: Record<string, unknown>[] = (() => {
+  const currentItems: any[] = (() => {
     if (!data) return [];
     if (tab === 'dart') return data.results.dart?.items ?? [];
     if (tab === 'sec') return data.results.sec?.items ?? [];
@@ -142,30 +142,37 @@ export default function Home() {
               <p>결과 없음</p>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0 }}>
-                {currentItems.map((item, i) => (
-                  <li
-                    key={i}
-                    style={{
-                      borderBottom: '1px solid #eee',
-                      padding: '12px 0',
-                    }}
-                  >
-                    <a
-                      href={(item.url as string) || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ fontWeight: 600 }}
+                {currentItems.map((item, i) => {
+                  const url = typeof item?.url === 'string' ? item.url : '';
+                  const title = typeof item?.title === 'string' ? item.title : '';
+                  const date = typeof item?.date === 'string' ? item.date : '';
+                  const snippet = typeof item?.snippet === 'string' ? item.snippet : '';
+                  return (
+                    <li
+                      key={i}
+                      style={{
+                        borderBottom: '1px solid #eee',
+                        padding: '12px 0',
+                      }}
                     >
-                      {String(item.title ?? '')}
-                    </a>
-                    {(item.date || item.snippet) && (
-                      <div style={{ fontSize: 14, color: '#555', marginTop: 4 }}>
-                        {item.date && <span>{String(item.date)}</span>}
-                        {item.snippet && <span> — {String(item.snippet)}</span>}
-                      </div>
-                    )}
-                  </li>
-                ))}
+                      <a
+                        href={url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontWeight: 600 }}
+                      >
+                        {title}
+                      </a>
+                      {(date || snippet) && (
+                        <div style={{ fontSize: 14, color: '#555', marginTop: 4 }}>
+                          {date && <span>{date}</span>}
+                          {date && snippet && ' · '}
+                          {snippet && <span>{snippet}</span>}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>
