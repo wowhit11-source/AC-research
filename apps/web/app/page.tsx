@@ -75,6 +75,9 @@ export default function Home() {
   const [tab, setTab] = useState<TabId>("sec");
 
   const [sources, setSources] = useState<TabId[]>(["sec", "youtube", "papers"]);
+const openExternal = (url: string) => {
+  window.open(url, "_blank");
+};
 
   const toggleSource = (id: TabId) => {
     setSources((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
