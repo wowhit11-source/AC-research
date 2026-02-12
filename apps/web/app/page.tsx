@@ -245,6 +245,43 @@ setData(normalized);
             엑셀 파일 다운로드
           </button>
         </div>
+<div
+  style={{
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.10)",
+    borderRadius: 14,
+    padding: 20,
+    marginBottom: 20,
+    lineHeight: 1.7,
+  }}
+>
+  <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>
+    재무제표 검색 안내
+  </div>
+
+  <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 14 }}>
+    재무제표 검색 시 미국 주식은 티커(symbol), 국내 주식은 종목번호를 기준으로 조회됩니다.
+    정확한 검색을 위해 티커 또는 종목번호만 단독으로 입력하는 것을 권장합니다.
+    다른 단어를 함께 입력할 경우 검색 정확도가 떨어질 수 있습니다.
+    유튜브 영상이나 논문을 검색할 때 티커 또는 종목번호만으로 검색하면
+    원하는 결과가 정확히 나오지 않을 수 있습니다.
+    이 경우에는 기업명 또는 관련 키워드를 함께 활용해 검색하시기 바랍니다.
+  </div>
+
+  <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>
+    사용 방법 (Notebook LM 기준)
+  </div>
+
+  <ol style={{ paddingLeft: 18, fontSize: 14, opacity: 0.9 }}>
+    <li>Notebook LM에 접속하여 새 노트를 생성합니다.</li>
+    <li>좌측의 소스 추가 버튼을 클릭한 뒤 웹사이트를 선택합니다.</li>
+    <li>프로그램에서 검색된 URL을 복사해 붙여넣고 추가합니다. 필요한 URL을 모두 추가합니다.</li>
+    <li>소스 추가가 완료되면 궁금한 내용을 질문하거나, 스튜디오 기능을 실행하여 분석을 진행합니다.</li>
+    <li>다른 AI 플랫폼에서도 동일한 방식으로 URL을 추가해 활용하시면 됩니다.</li>
+  </ol>
+</div>
+
+        
 
         {error ? <div style={{ color: "#ff6b6b", marginTop: 10, fontSize: 13 }}>{error}</div> : null}
 
