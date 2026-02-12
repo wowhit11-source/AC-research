@@ -24,14 +24,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             <div style={{ display: "grid", gap: 10 }}>
               {[
-                { label: "ChatGPT", href: "#" },
-                { label: "Google Gemini", href: "#" },
-                { label: "Anthropic Claude", href: "#" },
-                { label: "Google NotebookLM", href: "#" },
-              ].map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
+               
+  { label: "ChatGPT", href: "https://chat.openai.com" },
+  { label: "Google Gemini", href: "https://gemini.google.com" },
+  { label: "Anthropic Claude", href: "https://claude.ai" },
+  { label: "Google NotebookLM", href: "https://notebooklm.google.com" },
+].map((item) => (
+
+               <a
+  key={item.label}
+  href={item.href}
+  target="_blank"
+  rel="noopener noreferrer"
+
                   style={{
                     display: "flex",
                     alignItems: "center",
