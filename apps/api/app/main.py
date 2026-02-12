@@ -17,12 +17,12 @@ from app.cache import get as cache_get, set_ as cache_set
 from app.schemas import ErrorItem, ResearchMeta, ResearchRequest, ResearchResponse, ResearchResults
 from app.utils import is_korea_stock, slugify
 
-# CORS: production에서는 Vercel 도메인만 허용 (ALLOWED_ORIGINS 쉼표 구분)
+# CORS: 배포 테스트용 "*" 허용. Production에서 ALLOWED_ORIGINS로 제한 권장.
 _origins_str = os.getenv("ALLOWED_ORIGINS", "").strip()
 if _origins_str:
     _allow_origins = [o.strip() for o in _origins_str.split(",") if o.strip()]
 else:
-    _allow_origins = ["*"]
+    _allow_origins = ["*"]  # 임시 허용 (배포 테스트용)
 
 app = FastAPI(title="AC-research API", version="1.0.0", debug=os.getenv("ENV") != "production")
 app.add_middleware(

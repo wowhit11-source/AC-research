@@ -36,35 +36,29 @@ SEC·OpenAlex(논문)는 API 키 불필요.
 
 ## Render 배포 방법
 
-1. **GitHub에 푸시**  
-   이 리포지토리를 GitHub에 push합니다.
-
-2. **Render 로그인**  
+1. **Render 로그인**  
    [render.com](https://render.com) → Sign In → GitHub 연결.
 
-3. **New Web Service**  
+2. **New Web Service**  
    - Dashboard → **New** → **Web Service**
-   - GitHub 저장소 선택
-   - **Root Directory**: `apps/api` 로 설정 (반드시 지정)
+   - GitHub 저장소 선택: `wowhit11-source/AC-research` (또는 해당 리포)
+   - **Root Directory**: `apps/api` **(반드시 지정)**
    - **Environment**: Python 3
    - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port 10000`
    - **Instance Type**: Free (또는 유료 플랜)
 
-4. **Environment Variables (Secrets)**  
-   **Environment** 탭에서 추가:
-   - `DART_API_KEY`: (opendart 키)
-   - `YOUTUBE_API_KEY`: (Google YouTube API 키)
-   - `ALLOWED_ORIGINS`: `https://your-app.vercel.app` (Vercel 배포 후 실제 URL로 교체)
+3. **Environment Variables**  
+   **Environment** 탭에서 추가 (필요 시):
+   - `DART_API_KEY`: opendart.fss.or.kr 발급 키
+   - `YOUTUBE_API_KEY`: Google YouTube Data API v3 키
 
-5. **Health Check**  
-   Render 대시보드에서 **Health Check Path**: `/health` 로 설정 (선택 사항, 기본 통과).
+4. **Deploy**  
+   **Create Web Service** 클릭 → 빌드·배포 대기.
 
-6. **Deploy**  
-   **Create Web Service** 클릭. 빌드·배포 후 서비스 URL 예: `https://ac-research-api.onrender.com`
-
-7. **Blueprint (선택)**  
-   저장소 루트가 아닌 `apps/api` 에서만 배포할 경우, Render 대시보드에서 **Root Directory**를 `apps/api`로 지정하면 `render.yaml` 대신 수동 설정이 적용됩니다. `render.yaml`을 쓰려면 Blueprint로 한 번에 배포할 수 있습니다.
+5. **배포 후 /health 테스트**  
+   서비스 URL (예: `https://ac-research-api.onrender.com`) + `/health` 접속  
+   → `{"ok": true}` 응답 확인.
 
 ---
 
