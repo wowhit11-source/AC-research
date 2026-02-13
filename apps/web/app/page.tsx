@@ -59,6 +59,45 @@ const chipStyle = (active: boolean) => ({
   fontSize: 12,
 });
 
+const infoCardStyle = {
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: 14,
+  padding: 16,
+  marginBottom: 14,
+};
+
+const infoTitleStyle = {
+  fontSize: 14,
+  fontWeight: 800 as const,
+  marginBottom: 10,
+  color: "#e6edf3",
+};
+
+const infoSubTitleStyle = {
+  fontSize: 13,
+  fontWeight: 700 as const,
+  marginTop: 12,
+  marginBottom: 6,
+  color: "#e6edf3",
+};
+
+const infoTextStyle = {
+  fontSize: 13,
+  opacity: 0.9,
+  lineHeight: 1.55,
+  color: "#e6edf3",
+};
+
+const olStyle = {
+  margin: 0,
+  paddingLeft: 18,
+  fontSize: 13,
+  opacity: 0.9,
+  lineHeight: 1.7,
+  color: "#e6edf3",
+};
+
 function countOf(data: ResearchResponse | null, tab: TabId) {
   if (!data) return 0;
   return Array.isArray(data.results[tab]) ? data.results[tab].length : 0;
@@ -145,34 +184,20 @@ export default function Home() {
   // ✅ 모든 탭 결과를 공통 테이블 Row 형태로 변환
   const tableRows = useMemo(() => {
     return (currentItems as any[]).map((r: any) => {
-      const url =
-        r?.url ??
-        r?.pdf_url ??
-        r?.main_url ??
-        "";
+      const url = r?.url ?? r?.pdf_url ?? r?.main_url ?? "";
 
       const published =
-        r?.published_date ??
-        r?.published_at ??
-        r?.date ??
-        r?.publishedAt ??
-        "";
+        r?.published_date ?? r?.published_at ?? r?.date ?? r?.publishedAt ?? "";
 
       const ticker = r?.ticker ?? r?.symbol ?? "";
       const sourceType = r?.source_type ?? r?.source ?? (tab === "sec" ? "SEC" : "");
 
       const title =
         r?.title ??
-        (tab === "sec"
-          ? `${ticker} ${sourceType} ${published}`
-          : "");
+        (tab === "sec" ? `${ticker} ${sourceType} ${published}` : "");
 
       const date =
-        r?.date ??
-        r?.published_date ??
-        r?.published_at ??
-        r?.year ??
-        "";
+        r?.date ?? r?.published_date ?? r?.published_at ?? r?.year ?? "";
 
       return {
         source_type: String(sourceType ?? ""),
@@ -199,6 +224,32 @@ export default function Home() {
       <div style={{ fontSize: 34, fontWeight: 800, marginBottom: 10 }}>AC-research</div>
       <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 18 }}>
         키워드 하나로 미국 SEC / 국내 DART 재무제표, 유튜브, 논문을 한 번에 검색하는 리서치 도구입니다.
+      </div>
+
+      {/* 안내 섹션 추가 */}
+      <div style={infoCardStyle}>
+        <div style={infoTitleStyle}>사용 안내</div>
+
+        <div style={infoSubTitleStyle}>재무제표 검색 안내</div>
+        <div style={infoTextStyle}>
+          재무제표 검색 시 미국 주식은 티커(symbol), 국내 주식은 종목번호를 기준으로 조회됩니다.
+          정확한 검색을 위해 티커 또는 종목번호만 단독으로 입력하는 것을 권장합니다.
+          다른 단어를 함께 입력할 경우 검색 정확도가 떨어질 수 있습니다.
+        </div>
+
+        <div style={infoTextStyle}>
+          유튜브 영상이나 논문을 검색할 때 티커 또는 종목번호만으로 검색하면 원하는 결과가 정확히 나오지 않을 수 있습니다.
+          이 경우에는 기업명 또는 관련 키워드를 함께 활용해 검색하시기 바랍니다.
+        </div>
+
+        <div style={infoSubTitleStyle}>사용 방법 (Notebook LM 기준)</div>
+        <ol style={olStyle}>
+          <li>Notebook LM에 접속하여 새 노트를 생성합니다.</li>
+          <li>좌측의 소스 추가 버튼을 클릭한 뒤 웹사이트를 선택합니다.</li>
+          <li>프로그램에서 검색된 URL을 복사해 붙여넣고 추가합니다. 필요한 URL을 모두 추가합니다.</li>
+          <li>소스 추가가 완료되면 궁금한 내용을 질문하거나, 스튜디오 기능을 실행하여 분석을 진행합니다.</li>
+          <li>다른 AI 플랫폼에서도 동일한 방식으로 URL을 추가해 활용하시면 됩니다.</li>
+        </ol>
       </div>
 
       <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 8 }}>
@@ -335,7 +386,6 @@ export default function Home() {
               {currentItems.length === 0 ? (
                 <div style={{ opacity: 0.75, fontSize: 13 }}>결과 없음</div>
               ) : (
-                // ✅ 이제 모든 탭이 동일 테이블 + Copy URLs 사용
                 <SecResultsTable rows={tableRows as any} label={tableLabel} />
               )}
             </div>
@@ -345,4 +395,3 @@ export default function Home() {
     </div>
   );
 }
-
