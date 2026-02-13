@@ -21,9 +21,32 @@ function parseDate(value: string) {
   return Number.isFinite(t) ? t : 0;
 }
 
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
 export default function SecResultsTable({ rows }: { rows: Row[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
   const sortedRows = useMemo(() => {
     const copy = [...rows];
@@ -60,6 +83,17 @@ export default function SecResultsTable({ rows }: { rows: Row[] }) {
     return sortDir === "asc" ? "↑" : "↓";
   }
 
+  async function handleCopyUrl(url: string) {
+    if (!url) return;
+    const ok = await copyToClipboard(url);
+    if (!ok) return;
+
+    setCopiedUrl(url);
+    window.setTimeout(() => {
+      setCopiedUrl((prev) => (prev === url ? null : prev));
+    }, 900);
+  }
+
   return (
     <div style={{ overflowX: "auto", width: "100%" }}>
       <table style={styles.table}>
@@ -77,21 +111,36 @@ export default function SecResultsTable({ rows }: { rows: Row[] }) {
 
         <tbody>
           {sortedRows.map((row, idx) => (
-            <tr key={`${row.url}-${idx}`} style={styles.tr}>
+            <tr key={`${row.url}-${idx}`}>
               {COLS.map((key) => (
                 <td key={key} style={styles.td}>
                   {key === "url" ? (
-                    <a
-                      href={row.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={styles.selectableLink}
-                      onMouseDown={(e) => e.stopPropagation()}
-                    >
-                      {row.url}
-                    </a>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <a
+                        href={row.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={styles.link}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {row.url}
+                      </a>
+
+                      <button
+                        type="button"
+                        style={styles.copyBtn}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleCopyUrl(row.url);
+                        }}
+                        title="URL 복사"
+                      >
+                        {copiedUrl === row.url ? "Copied" : "Copy"}
+                      </button>
+                    </div>
                   ) : (
-                    <span style={styles.selectableText}>{String(row[key] ?? "")}</span>
+                    <span style={{ userSelect: "text" }}>{String(row[key] ?? "")}</span>
                   )}
                 </td>
               ))}
@@ -101,9 +150,7 @@ export default function SecResultsTable({ rows }: { rows: Row[] }) {
       </table>
 
       <style>{`
-        tbody tr:hover td {
-          background: rgba(255,255,255,0.03);
-        }
+        tbody tr:hover td { background: rgba(255,255,255,0.03); }
       `}</style>
     </div>
   );
@@ -116,7 +163,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "13px",
     border: "1px solid rgba(255,255,255,0.22)",
   },
-
   th: {
     textAlign: "left",
     padding: "12px 10px",
@@ -128,25 +174,26 @@ const styles: Record<string, React.CSSProperties> = {
     all: "unset",
     cursor: "pointer",
   },
-
-  tr: {},
-
   td: {
     padding: "12px 10px",
     border: "1px solid rgba(255,255,255,0.12)",
     verticalAlign: "top",
-    userSelect: "none",
   },
-
-  selectableText: {
-    userSelect: "text",
-  },
-
-  selectableLink: {
-    userSelect: "text",
-    display: "inline-block",
+  link: {
+    color: "#7aa2ff",
     textDecoration: "underline",
     wordBreak: "break-all",
-    color: "#7aa2ff",
+    userSelect: "text",
+  },
+  copyBtn: {
+    height: 24,
+    padding: "0 10px",
+    borderRadius: 8,
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "rgba(255,255,255,0.06)",
+    color: "#e6edf3",
+    cursor: "pointer",
+    fontSize: 12,
+    whiteSpace: "nowrap",
   },
 };
