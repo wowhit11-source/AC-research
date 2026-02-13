@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 
 type Row = {
   source_type?: string;
@@ -20,7 +20,30 @@ function parseDate(value?: string) {
   return Number.isFinite(t) ? t : 0;
 }
 
-export default function ResultsTable({
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      ta.style.top = "-9999px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+export default function SecResultsTable({
   rows,
   label,
 }: {
@@ -29,6 +52,7 @@ export default function ResultsTable({
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [copied, setCopied] = useState(false);
 
   const sortedRows = useMemo(() => {
     const copy = [...rows];
@@ -65,22 +89,27 @@ export default function ResultsTable({
     return sortDir === "asc" ? "↑" : "↓";
   }
 
-  function handleCopyAll() {
+  async function handleCopyAll() {
     const urls = sortedRows
-      .map((r) => r.url)
+      .map((r) => (r.url ?? "").trim())
       .filter(Boolean)
       .join("\n");
 
-    navigator.clipboard.writeText(urls);
+    if (!urls) return;
+
+    const ok = await copyToClipboard(urls);
+    if (ok) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } else {
+      alert("복사에 실패했습니다. 브라우저 권한을 확인해주세요.");
+    }
   }
 
   return (
     <div style={{ width: "100%" }}>
-      <div style={styles.header}>
-        <div>{label}</div>
-        <button style={styles.copyBtn} onClick={handleCopyAll}>
-          Copy URLs ({rows.length})
-        </button>
+      <div style={{ marginBottom: 10, fontSize: 14, fontWeight: 700 }}>
+        {label}
       </div>
 
       <div style={{ overflowX: "auto" }}>
@@ -94,9 +123,20 @@ export default function ResultsTable({
               </th>
 
               <th style={styles.th}>
-                <button style={styles.thButton} onClick={() => handleSort("url")}>
-                  url {sortIndicator("url")}
-                </button>
+                <div style={styles.urlHeaderWrap}>
+                  <button style={styles.thButton} onClick={() => handleSort("url")}>
+                    url {sortIndicator("url")}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCopyAll}
+                    style={copied ? styles.copyBtnCopied : styles.copyBtn}
+                    title="정렬된 순서 그대로 URL만 줄바꿈 복사"
+                  >
+                    {copied ? "Copied" : `Copy URLs (${rows.length})`}
+                  </button>
+                </div>
               </th>
 
               <th style={styles.th}>
@@ -127,48 +167,42 @@ export default function ResultsTable({
 
           <tbody>
             {sortedRows.map((row, idx) => (
-              <tr key={`${row.url}-${idx}`} style={styles.tr}>
-                <td style={styles.td}>{row.source_type}</td>
+              <tr key={`${row.url ?? "row"}-${idx}`} style={styles.tr}>
+                <td style={styles.td}>{row.source_type ?? ""}</td>
 
                 <td style={styles.td}>
-                  <a
-                    href={row.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={styles.link}
-                  >
-                    {row.url}
-                  </a>
+                  {row.url ? (
+                    <a href={row.url} target="_blank" rel="noopener noreferrer" style={styles.link}>
+                      {row.url}
+                    </a>
+                  ) : (
+                    ""
+                  )}
                 </td>
 
-                <td style={styles.td}>{row.published_date}</td>
-                <td style={styles.td}>{row.ticker}</td>
-                <td style={styles.td}>{row.title}</td>
-                <td style={styles.td}>{row.date}</td>
+                <td style={styles.td}>{row.published_date ?? ""}</td>
+                <td style={styles.td}>{row.ticker ?? ""}</td>
+                <td style={styles.td}>{row.title ?? ""}</td>
+                <td style={styles.td}>{row.date ?? ""}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <style>{`
+        tbody tr:hover td {
+          background: rgba(255,255,255,0.03);
+        }
+        button[data-copy-btn]:hover {
+          transform: translateY(-1px);
+        }
+      `}</style>
     </div>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "10px 0",
-  },
-  copyBtn: {
-    background: "#1e90ff",
-    color: "#fff",
-    padding: "6px 14px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
   table: {
     width: "100%",
     borderCollapse: "collapse",
@@ -178,10 +212,19 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "left",
     padding: "10px",
     borderBottom: "1px solid rgba(255,255,255,0.1)",
+    whiteSpace: "nowrap",
+    verticalAlign: "middle",
   },
   thButton: {
     all: "unset",
     cursor: "pointer",
+  },
+  urlHeaderWrap: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    minWidth: 520,
   },
   tr: {
     userSelect: "none",
@@ -189,9 +232,34 @@ const styles: Record<string, React.CSSProperties> = {
   td: {
     padding: "10px",
     borderBottom: "1px solid rgba(255,255,255,0.05)",
+    verticalAlign: "top",
   },
   link: {
     textDecoration: "underline",
     wordBreak: "break-all",
+  },
+  copyBtn: {
+    background: "rgba(255, 80, 80, 0.92)",
+    color: "#fff",
+    padding: "6px 12px",
+    borderRadius: 8,
+    cursor: "pointer",
+    fontWeight: 800,
+    border: "1px solid rgba(255,255,255,0.18)",
+    boxShadow: "0 6px 20px rgba(255, 80, 80, 0.18)",
+    transition: "transform 0.08s ease",
+    userSelect: "none",
+  },
+  copyBtnCopied: {
+    background: "rgba(80, 200, 120, 0.92)",
+    color: "#0b1a12",
+    padding: "6px 12px",
+    borderRadius: 8,
+    cursor: "pointer",
+    fontWeight: 900,
+    border: "1px solid rgba(255,255,255,0.18)",
+    boxShadow: "0 6px 20px rgba(80, 200, 120, 0.16)",
+    transition: "transform 0.08s ease",
+    userSelect: "none",
   },
 };
