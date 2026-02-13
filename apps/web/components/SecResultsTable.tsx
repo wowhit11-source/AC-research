@@ -63,77 +63,61 @@ export default function SecResultsTable({ rows }: { rows: Row[] }) {
       <table style={styles.table}>
         <thead>
           <tr>
-            <th style={styles.th}>
-              <button style={styles.thButton} onClick={() => handleSort("source_type")}>
-                source_type {sortIndicator("source_type")}
-              </button>
-            </th>
-
-            <th style={styles.th}>
-              <button style={styles.thButton} onClick={() => handleSort("url")}>
-                url {sortIndicator("url")}
-              </button>
-            </th>
-
-            <th style={styles.th}>
-              <button style={styles.thButton} onClick={() => handleSort("published_date")}>
-                published_date {sortIndicator("published_date")}
-              </button>
-            </th>
-
-            <th style={styles.th}>
-              <button style={styles.thButton} onClick={() => handleSort("ticker")}>
-                ticker {sortIndicator("ticker")}
-              </button>
-            </th>
-
-            <th style={styles.th}>
-              <button style={styles.thButton} onClick={() => handleSort("title")}>
-                title {sortIndicator("title")}
-              </button>
-            </th>
-
-            <th style={styles.th}>
-              <button style={styles.thButton} onClick={() => handleSort("date")}>
-                date {sortIndicator("date")}
-              </button>
-            </th>
+            {(["source_type", "url", "published_date", "ticker", "title", "date"] as SortKey[]).map(
+              (key, i, arr) => (
+                <th
+                  key={key}
+                  style={{
+                    ...styles.th,
+                    borderRight:
+                      i !== arr.length - 1
+                        ? "1px solid rgba(255,255,255,0.08)"
+                        : undefined,
+                  }}
+                >
+                  <button style={styles.thButton} onClick={() => handleSort(key)}>
+                    {key} {sortIndicator(key)}
+                  </button>
+                </th>
+              )
+            )}
           </tr>
         </thead>
 
         <tbody>
           {sortedRows.map((row, idx) => (
             <tr key={`${row.url}-${idx}`} style={styles.tr}>
-              <td style={styles.td}>
-                <span style={styles.cellText}>{row.source_type}</span>
-              </td>
+              {(["source_type", "url", "published_date", "ticker", "title", "date"] as SortKey[]).map(
+                (key, i, arr) => {
+                  const value = row[key];
+                  const isLast = i === arr.length - 1;
 
-              <td style={styles.td}>
-                <a
-                  href={row.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ ...styles.link, ...styles.cellText }}
-                >
-                  {row.url}
-                </a>
-              </td>
-
-              <td style={styles.td}>
-                <span style={styles.cellText}>{row.published_date}</span>
-              </td>
-
-              <td style={styles.td}>
-                <span style={styles.cellText}>{row.ticker}</span>
-              </td>
-
-              <td style={styles.td}>
-                <span style={styles.cellText}>{row.title}</span>
-              </td>
-
-              <td style={styles.td}>
-                <span style={styles.cellText}>{row.date}</span>
-              </td>
+                  return (
+                    <td
+                      key={key}
+                      style={{
+                        ...styles.td,
+                        borderRight: !isLast
+                          ? "1px solid rgba(255,255,255,0.06)"
+                          : undefined,
+                      }}
+                    >
+                      {key === "url" ? (
+                        <a
+                          href={value}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={styles.link}
+                        >
+                          {value}
+                        </a>
+                      ) : (
+                        <span>{value}</span>
+                      )}
+                    </td>
+                  );
+                }
+              )}
             </tr>
           ))}
         </tbody>
@@ -153,30 +137,28 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     borderCollapse: "collapse",
     fontSize: "13px",
+    border: "1px solid rgba(255,255,255,0.15)",
   },
   th: {
     textAlign: "left",
-    padding: "10px",
-    borderBottom: "1px solid rgba(255,255,255,0.1)",
+    padding: "12px 10px",
+    borderBottom: "1px solid rgba(255,255,255,0.10)",
     whiteSpace: "nowrap",
   },
   thButton: {
     all: "unset",
     cursor: "pointer",
   },
-  tr: {
-    userSelect: "none",
-  },
+  tr: {},
   td: {
-    padding: "10px",
+    padding: "12px 10px",
     borderBottom: "1px solid rgba(255,255,255,0.05)",
-    maxWidth: "500px",
-  },
-  cellText: {
-    userSelect: "text",
+    whiteSpace: "nowrap",
   },
   link: {
     textDecoration: "underline",
     wordBreak: "break-all",
+    color: "#7aa2ff",
   },
 };
+
