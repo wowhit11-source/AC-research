@@ -97,77 +97,81 @@ export default function SecResultsTable({ rows }: { rows: Row[] }) {
   }
 
   return (
-    <div style={{ width: "100%" }}>
-      <div style={styles.toolbar}>
-        <button type="button" style={styles.copyAllBtn} onClick={copyAllUrls}>
-          {copiedAll ? "Copied" : `Copy all URLs (${sortedRows.length})`}
-        </button>
-        <div style={styles.hint}>정렬된 순서 그대로 URL만 줄바꿈 복사</div>
-      </div>
+    <div style={{ overflowX: "auto", width: "100%" }}>
+      <table style={styles.table}>
+        <thead>
+          <tr>
+            {COLS.map((key) => {
+              if (key === "url") {
+                return (
+                  <th key={key} style={styles.th}>
+                    <div style={styles.urlHeaderWrap}>
+                      <button style={styles.thButton} onClick={() => handleSort("url")}>
+                        url {sortIndicator("url")}
+                      </button>
 
-      <div style={{ overflowX: "auto", width: "100%" }}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              {COLS.map((key) => (
+                      <button
+                        type="button"
+                        style={copiedAll ? styles.copyAllBtnActive : styles.copyAllBtn}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          copyAllUrls();
+                        }}
+                        title="정렬된 순서 그대로 URL만 줄바꿈 복사"
+                      >
+                        {copiedAll ? "Copied" : `Copy URLs (${sortedRows.length})`}
+                      </button>
+                    </div>
+                  </th>
+                );
+              }
+
+              return (
                 <th key={key} style={styles.th}>
                   <button style={styles.thButton} onClick={() => handleSort(key)}>
                     {key} {sortIndicator(key)}
                   </button>
                 </th>
+              );
+            })}
+          </tr>
+        </thead>
+
+        <tbody>
+          {sortedRows.map((row, idx) => (
+            <tr key={`${row.url}-${idx}`}>
+              {COLS.map((key) => (
+                <td key={key} style={styles.td}>
+                  {key === "url" ? (
+                    <a href={row.url} target="_blank" rel="noopener noreferrer" style={styles.link}>
+                      {row.url}
+                    </a>
+                  ) : (
+                    <span style={{ userSelect: "text" }}>{String(row[key] ?? "")}</span>
+                  )}
+                </td>
               ))}
             </tr>
-          </thead>
+          ))}
+        </tbody>
+      </table>
 
-          <tbody>
-            {sortedRows.map((row, idx) => (
-              <tr key={`${row.url}-${idx}`}>
-                {COLS.map((key) => (
-                  <td key={key} style={styles.td}>
-                    {key === "url" ? (
-                      <a href={row.url} target="_blank" rel="noopener noreferrer" style={styles.link}>
-                        {row.url}
-                      </a>
-                    ) : (
-                      <span style={{ userSelect: "text" }}>{String(row[key] ?? "")}</span>
-                    )}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <style>{`
+        tbody tr:hover td { background: rgba(255,255,255,0.03); }
 
-        <style>{`
-          tbody tr:hover td { background: rgba(255,255,255,0.03); }
-        `}</style>
-      </div>
+        .copyAllBtn:hover {
+          filter: brightness(1.08);
+        }
+        .copyAllBtn:active {
+          transform: translateY(1px);
+        }
+      `}</style>
     </div>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  toolbar: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 10,
-  },
-  copyAllBtn: {
-    height: 32,
-    padding: "0 12px",
-    borderRadius: 10,
-    border: "1px solid rgba(255,255,255,0.18)",
-    background: "rgba(255,255,255,0.08)",
-    color: "#e6edf3",
-    cursor: "pointer",
-    fontSize: 13,
-    whiteSpace: "nowrap",
-  },
-  hint: {
-    fontSize: 12,
-    opacity: 0.75,
-  },
   table: {
     width: "100%",
     borderCollapse: "collapse",
@@ -180,10 +184,39 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: "nowrap",
     border: "1px solid rgba(255,255,255,0.18)",
     background: "rgba(255,255,255,0.03)",
+    verticalAlign: "middle",
   },
   thButton: {
     all: "unset",
     cursor: "pointer",
+  },
+  urlHeaderWrap: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  copyAllBtn: {
+    height: 26,
+    padding: "0 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(90, 169, 255, 0.55)",
+    background: "rgba(90, 169, 255, 0.20)",
+    color: "#e6edf3",
+    cursor: "pointer",
+    fontSize: 12,
+    whiteSpace: "nowrap",
+  },
+  copyAllBtnActive: {
+    height: 26,
+    padding: "0 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(80, 220, 170, 0.65)",
+    background: "rgba(80, 220, 170, 0.22)",
+    color: "#e6edf3",
+    cursor: "pointer",
+    fontSize: 12,
+    whiteSpace: "nowrap",
   },
   td: {
     padding: "12px 10px",
