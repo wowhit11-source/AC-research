@@ -73,10 +73,6 @@ export default function Home() {
 
   const [sources, setSources] = useState<TabId[]>(["sec", "youtube", "papers"]);
 
-  const openExternal = (url: string) => {
-    window.open(url, "_blank");
-  };
-
   const toggleSource = (id: TabId) => {
     setSources((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
@@ -146,21 +142,57 @@ export default function Home() {
     return data.results?.[tab] ?? [];
   }, [data, tab]);
 
-  const secRows = useMemo(() => {
-    if (tab !== "sec") return [];
+  // ✅ 모든 탭 결과를 공통 테이블 Row 형태로 변환
+  const tableRows = useMemo(() => {
     return (currentItems as any[]).map((r: any) => {
-      const published = r?.published_date ?? "";
-      const ticker = r?.ticker ?? "";
+      const url =
+        r?.url ??
+        r?.pdf_url ??
+        r?.main_url ??
+        "";
+
+      const published =
+        r?.published_date ??
+        r?.published_at ??
+        r?.date ??
+        r?.publishedAt ??
+        "";
+
+      const ticker = r?.ticker ?? r?.symbol ?? "";
+      const sourceType = r?.source_type ?? r?.source ?? (tab === "sec" ? "SEC" : "");
+
+      const title =
+        r?.title ??
+        (tab === "sec"
+          ? `${ticker} ${sourceType} ${published}`
+          : "");
+
+      const date =
+        r?.date ??
+        r?.published_date ??
+        r?.published_at ??
+        r?.year ??
+        "";
+
       return {
-        source_type: r?.source_type ?? "SEC",
-        url: r?.url ?? "",
-        published_date: published,
-        ticker,
-        title: r?.title ?? `${ticker} SEC ${published}`,
-        date: r?.date ?? published,
+        source_type: String(sourceType ?? ""),
+        url: String(url ?? ""),
+        published_date: String(published ?? ""),
+        ticker: String(ticker ?? ""),
+        title: String(title ?? ""),
+        date: String(date ?? ""),
       };
     });
-  }, [tab, currentItems]);
+  }, [currentItems, tab]);
+
+  const tableLabel =
+    tab === "sec"
+      ? "SEC 결과 (미국)"
+      : tab === "dart"
+      ? "DART 결과 (국내)"
+      : tab === "youtube"
+      ? "YouTube 결과"
+      : "Papers 결과";
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -260,42 +292,6 @@ export default function Home() {
           </button>
         </div>
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.10)",
-            borderRadius: 14,
-            padding: 20,
-            marginBottom: 20,
-            lineHeight: 1.7,
-          }}
-        >
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>재무제표 검색 안내</div>
-
-          <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 14 }}>
-            재무제표 검색 시 미국 주식은 티커(symbol), 국내 주식은 종목번호를 기준으로 조회됩니다. 정확한 검색을 위해 티커 또는
-            종목번호만 단독으로 입력하는 것을 권장합니다. 다른 단어를 함께 입력할 경우 검색 정확도가 떨어질 수 있습니다. 유튜브
-            영상이나 논문을 검색할 때 티커 또는 종목번호만으로 검색하면 원하는 결과가 정확히 나오지 않을 수 있습니다. 이 경우에는
-            기업명 또는 관련 키워드를 함께 활용해 검색하시기 바랍니다. 
-            Copy all URLs을 클릭하시면 URL만 전체복사 가능합니다. 이 기능을 이용해주세요.
-
-      
-
-            
-          </div>
-
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>사용 방법 (Notebook LM 기준)</div>
-
-          <ol style={{ paddingLeft: 18, fontSize: 14, opacity: 0.9 }}>
-            <li>Notebook LM에 접속하여 새 노트를 생성합니다.</li>
-            <li>좌측의 소스 추가 버튼을 클릭한 뒤 웹사이트를 선택합니다.</li>
-            <li>프로그램에서 검색된 URL을 복사해 붙여넣고 추가합니다. 필요한 URL을 모두 추가합니다.</li>
-            <li>소스 추가가 완료되면 궁금한 내용을 질문하거나, 스튜디오 기능을 실행하여 분석을 진행합니다.</li>
-            <li>다른 AI 플랫폼에서도 동일한 방식으로 URL을 추가해 활용하시면 됩니다.</li>
-            <li>국내주식 재무제표는 DART의 API구조 특성상 검색후 최대 10초까지 시간이 소요될 수 있습니다. 양해부탁드립니다.</li>
-          </ol>
-        </div>
-
         {error ? <div style={{ color: "#ff6b6b", marginTop: 10, fontSize: 13 }}>{error}</div> : null}
 
         {data?.meta?.errors?.length ? (
@@ -332,68 +328,15 @@ export default function Home() {
                 fontWeight: 700,
               }}
             >
-              {tab === "sec" ? "SEC 결과 (미국)" : tab === "dart" ? "DART 결과 (국내)" : tab === "youtube" ? "YouTube 결과" : "Papers 결과"}
+              {tableLabel}
             </div>
 
             <div style={{ padding: 14 }}>
               {currentItems.length === 0 ? (
                 <div style={{ opacity: 0.75, fontSize: 13 }}>결과 없음</div>
-              ) : tab === "sec" ? (
-                <SecResultsTable rows={secRows} />
               ) : (
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                    <thead>
-                      <tr>
-                        {Object.keys(currentItems[0] ?? {}).slice(0, 6).map((k) => (
-                          <th
-                            key={k}
-                            style={{
-                              textAlign: "left",
-                              padding: "10px 8px",
-                              borderBottom: "1px solid rgba(255,255,255,0.10)",
-                              opacity: 0.9,
-                              fontWeight: 700,
-                            }}
-                          >
-                            {k}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentItems.slice(0, 50).map((row: any, idx: number) => (
-                        <tr key={idx}>
-                          {Object.keys(currentItems[0] ?? {}).slice(0, 6).map((k) => {
-                            const v = row?.[k];
-                            const s = v == null ? "" : String(v);
-                            const isUrl = s.startsWith("http://") || s.startsWith("https://");
-                            return (
-                              <td
-                                key={k}
-                                style={{
-                                  padding: "10px 8px",
-                                  borderBottom: "1px solid rgba(255,255,255,0.06)",
-                                  verticalAlign: "top",
-                                  opacity: 0.95,
-                                }}
-                              >
-                                {isUrl ? (
-                                  <a href={s} target="_blank" rel="noreferrer" style={{ color: "#7aa2ff" }}>
-                                    {s}
-                                  </a>
-                                ) : (
-                                  s
-                                )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>표시 제한: 최대 50행, 최대 6컬럼</div>
-                </div>
+                // ✅ 이제 모든 탭이 동일 테이블 + Copy URLs 사용
+                <SecResultsTable rows={tableRows as any} label={tableLabel} />
               )}
             </div>
           </div>
@@ -402,3 +345,4 @@ export default function Home() {
     </div>
   );
 }
+
