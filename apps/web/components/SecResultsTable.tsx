@@ -102,7 +102,7 @@ export default function SecResultsTable({ rows }: { rows: Row[] }) {
         <button type="button" style={styles.copyAllBtn} onClick={copyAllUrls}>
           {copiedAll ? "Copied" : `Copy all URLs (${sortedRows.length})`}
         </button>
-        <div style={styles.hint}>정렬 상태 그대로 URL만 줄바꿈으로 복사됨</div>
+        <div style={styles.hint}>정렬된 순서 그대로 URL만 줄바꿈 복사</div>
       </div>
 
       <div style={{ overflowX: "auto", width: "100%" }}>
