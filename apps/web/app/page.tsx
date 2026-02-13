@@ -277,6 +277,10 @@ export default function Home() {
             종목번호만 단독으로 입력하는 것을 권장합니다. 다른 단어를 함께 입력할 경우 검색 정확도가 떨어질 수 있습니다. 유튜브
             영상이나 논문을 검색할 때 티커 또는 종목번호만으로 검색하면 원하는 결과가 정확히 나오지 않을 수 있습니다. 이 경우에는
             기업명 또는 관련 키워드를 함께 활용해 검색하시기 바랍니다.
+
+            Copy all URLs을 클릭하시면 URL만 전체복사 가능합니다. 이 기능을 이용해주세요.
+
+            
           </div>
 
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>사용 방법 (Notebook LM 기준)</div>
