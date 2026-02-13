@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import SecResultsTable from "@/components/SecResultsTable";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
 
@@ -21,7 +22,6 @@ interface ResearchResponse {
     papers: any[];
   };
   meta: ResearchMeta;
-
 }
 
 function unwrap(arrOrObj: any): any[] {
@@ -30,9 +30,6 @@ function unwrap(arrOrObj: any): any[] {
   if (arrOrObj && Array.isArray(arrOrObj.results)) return arrOrObj.results;
   return [];
 }
-
-
-
 
 const pillStyle = (active: boolean) => ({
   display: "inline-flex",
@@ -75,9 +72,10 @@ export default function Home() {
   const [tab, setTab] = useState<TabId>("sec");
 
   const [sources, setSources] = useState<TabId[]>(["sec", "youtube", "papers"]);
-const openExternal = (url: string) => {
-  window.open(url, "_blank");
-};
+
+  const openExternal = (url: string) => {
+    window.open(url, "_blank");
+  };
 
   const toggleSource = (id: TabId) => {
     setSources((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -103,25 +101,22 @@ const openExternal = (url: string) => {
         throw new Error(t || `HTTP ${res.status}`);
       }
 
-     const raw = await res.json();
+      const raw = await res.json();
 
-const normalized: ResearchResponse = {
-  ...raw,
-  results: {
-    dart: unwrap(raw?.results?.dart),
-    sec: unwrap(raw?.results?.sec),
-    youtube: unwrap(raw?.results?.youtube),
-    papers: unwrap(raw?.results?.papers),
-  },
-};
+      const normalized: ResearchResponse = {
+        ...raw,
+        results: {
+          dart: unwrap(raw?.results?.dart),
+          sec: unwrap(raw?.results?.sec),
+          youtube: unwrap(raw?.results?.youtube),
+          papers: unwrap(raw?.results?.papers),
+        },
+      };
 
-setData(normalized);
-
+      setData(normalized);
 
       const priority: TabId[] = ["dart", "sec", "youtube", "papers"];
-     const firstNonEmpty =
-  priority.find(k => (normalized.results?.[k]?.length ?? 0) > 0) || "sec";
-
+      const firstNonEmpty = priority.find((k) => (normalized.results?.[k]?.length ?? 0) > 0) || "sec";
       setTab(firstNonEmpty);
     } catch (e: any) {
       setError(e?.message ? String(e.message) : "Failed to fetch");
@@ -150,6 +145,22 @@ setData(normalized);
     if (!data) return [];
     return data.results?.[tab] ?? [];
   }, [data, tab]);
+
+  const secRows = useMemo(() => {
+    if (tab !== "sec") return [];
+    return (currentItems as any[]).map((r: any) => {
+      const published = r?.published_date ?? "";
+      const ticker = r?.ticker ?? "";
+      return {
+        source_type: r?.source_type ?? "SEC",
+        url: r?.url ?? "",
+        published_date: published,
+        ticker,
+        title: r?.title ?? `${ticker} SEC ${published}`,
+        date: r?.date ?? published,
+      };
+    });
+  }, [tab, currentItems]);
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -248,44 +259,37 @@ setData(normalized);
             엑셀 파일 다운로드
           </button>
         </div>
-<div
-  style={{
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    borderRadius: 14,
-    padding: 20,
-    marginBottom: 20,
-    lineHeight: 1.7,
-  }}
->
-  <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>
-    재무제표 검색 안내
-  </div>
 
-  <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 14 }}>
-    재무제표 검색 시 미국 주식은 티커(symbol), 국내 주식은 종목번호를 기준으로 조회됩니다.
-    정확한 검색을 위해 티커 또는 종목번호만 단독으로 입력하는 것을 권장합니다.
-    다른 단어를 함께 입력할 경우 검색 정확도가 떨어질 수 있습니다.
-    유튜브 영상이나 논문을 검색할 때 티커 또는 종목번호만으로 검색하면
-    원하는 결과가 정확히 나오지 않을 수 있습니다.
-    이 경우에는 기업명 또는 관련 키워드를 함께 활용해 검색하시기 바랍니다.
-  </div>
+        <div
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.10)",
+            borderRadius: 14,
+            padding: 20,
+            marginBottom: 20,
+            lineHeight: 1.7,
+          }}
+        >
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>재무제표 검색 안내</div>
 
-  <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>
-    사용 방법 (Notebook LM 기준)
-  </div>
+          <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 14 }}>
+            재무제표 검색 시 미국 주식은 티커(symbol), 국내 주식은 종목번호를 기준으로 조회됩니다. 정확한 검색을 위해 티커 또는
+            종목번호만 단독으로 입력하는 것을 권장합니다. 다른 단어를 함께 입력할 경우 검색 정확도가 떨어질 수 있습니다. 유튜브
+            영상이나 논문을 검색할 때 티커 또는 종목번호만으로 검색하면 원하는 결과가 정확히 나오지 않을 수 있습니다. 이 경우에는
+            기업명 또는 관련 키워드를 함께 활용해 검색하시기 바랍니다.
+          </div>
 
-  <ol style={{ paddingLeft: 18, fontSize: 14, opacity: 0.9 }}>
-    <li>Notebook LM에 접속하여 새 노트를 생성합니다.</li>
-    <li>좌측의 소스 추가 버튼을 클릭한 뒤 웹사이트를 선택합니다.</li>
-    <li>프로그램에서 검색된 URL을 복사해 붙여넣고 추가합니다. 필요한 URL을 모두 추가합니다.</li>
-    <li>소스 추가가 완료되면 궁금한 내용을 질문하거나, 스튜디오 기능을 실행하여 분석을 진행합니다.</li>
-    <li>다른 AI 플랫폼에서도 동일한 방식으로 URL을 추가해 활용하시면 됩니다.</li>
-    <li>국내주식 재무제표는 DART의 API구조 특성상 검색후 최대 10초까지 시간이 소요될 수 있습니다. 양해부탁드립니다.</li>
-  </ol>
-</div>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>사용 방법 (Notebook LM 기준)</div>
 
-        
+          <ol style={{ paddingLeft: 18, fontSize: 14, opacity: 0.9 }}>
+            <li>Notebook LM에 접속하여 새 노트를 생성합니다.</li>
+            <li>좌측의 소스 추가 버튼을 클릭한 뒤 웹사이트를 선택합니다.</li>
+            <li>프로그램에서 검색된 URL을 복사해 붙여넣고 추가합니다. 필요한 URL을 모두 추가합니다.</li>
+            <li>소스 추가가 완료되면 궁금한 내용을 질문하거나, 스튜디오 기능을 실행하여 분석을 진행합니다.</li>
+            <li>다른 AI 플랫폼에서도 동일한 방식으로 URL을 추가해 활용하시면 됩니다.</li>
+            <li>국내주식 재무제표는 DART의 API구조 특성상 검색후 최대 10초까지 시간이 소요될 수 있습니다. 양해부탁드립니다.</li>
+          </ol>
+        </div>
 
         {error ? <div style={{ color: "#ff6b6b", marginTop: 10, fontSize: 13 }}>{error}</div> : null}
 
@@ -315,13 +319,22 @@ setData(normalized);
               overflow: "hidden",
             }}
           >
-            <div style={{ padding: 14, borderBottom: "1px solid rgba(255,255,255,0.08)", fontSize: 14, fontWeight: 700 }}>
+            <div
+              style={{
+                padding: 14,
+                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                fontSize: 14,
+                fontWeight: 700,
+              }}
+            >
               {tab === "sec" ? "SEC 결과 (미국)" : tab === "dart" ? "DART 결과 (국내)" : tab === "youtube" ? "YouTube 결과" : "Papers 결과"}
             </div>
 
             <div style={{ padding: 14 }}>
               {currentItems.length === 0 ? (
                 <div style={{ opacity: 0.75, fontSize: 13 }}>결과 없음</div>
+              ) : tab === "sec" ? (
+                <SecResultsTable rows={secRows} />
               ) : (
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -374,9 +387,7 @@ setData(normalized);
                       ))}
                     </tbody>
                   </table>
-                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
-                    표시 제한: 최대 50행, 최대 6컬럼
-                  </div>
+                  <div style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>표시 제한: 최대 50행, 최대 6컬럼</div>
                 </div>
               )}
             </div>
