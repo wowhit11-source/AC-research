@@ -14,6 +14,8 @@ type Row = {
 type SortKey = keyof Row;
 type SortDir = "asc" | "desc";
 
+const COLS: SortKey[] = ["source_type", "url", "published_date", "ticker", "title", "date"];
+
 function parseDate(value: string) {
   const t = Date.parse(value);
   return Number.isFinite(t) ? t : 0;
@@ -63,61 +65,36 @@ export default function SecResultsTable({ rows }: { rows: Row[] }) {
       <table style={styles.table}>
         <thead>
           <tr>
-            {(["source_type", "url", "published_date", "ticker", "title", "date"] as SortKey[]).map(
-              (key, i, arr) => (
-                <th
-                  key={key}
-                  style={{
-                    ...styles.th,
-                    borderRight:
-                      i !== arr.length - 1
-                        ? "1px solid rgba(255,255,255,0.08)"
-                        : undefined,
-                  }}
-                >
-                  <button style={styles.thButton} onClick={() => handleSort(key)}>
-                    {key} {sortIndicator(key)}
-                  </button>
-                </th>
-              )
-            )}
+            {COLS.map((key) => (
+              <th key={key} style={styles.th}>
+                <button style={styles.thButton} onClick={() => handleSort(key)}>
+                  {key} {sortIndicator(key)}
+                </button>
+              </th>
+            ))}
           </tr>
         </thead>
 
         <tbody>
           {sortedRows.map((row, idx) => (
             <tr key={`${row.url}-${idx}`} style={styles.tr}>
-              {(["source_type", "url", "published_date", "ticker", "title", "date"] as SortKey[]).map(
-                (key, i, arr) => {
-                  const value = row[key];
-                  const isLast = i === arr.length - 1;
-
-                  return (
-                    <td
-                      key={key}
-                      style={{
-                        ...styles.td,
-                        borderRight: !isLast
-                          ? "1px solid rgba(255,255,255,0.06)"
-                          : undefined,
-                      }}
+              {COLS.map((key) => (
+                <td key={key} style={styles.td}>
+                  {key === "url" ? (
+                    <a
+                      href={row.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={styles.selectableLink}
+                      onMouseDown={(e) => e.stopPropagation()}
                     >
-                      {key === "url" ? (
-                        <a
-                          href={value}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={styles.link}
-                        >
-                          {value}
-                        </a>
-                      ) : (
-                        <span>{value}</span>
-                      )}
-                    </td>
-                  );
-                }
-              )}
+                      {row.url}
+                    </a>
+                  ) : (
+                    <span style={styles.selectableText}>{String(row[key] ?? "")}</span>
+                  )}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
@@ -137,28 +114,39 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     borderCollapse: "collapse",
     fontSize: "13px",
-    border: "1px solid rgba(255,255,255,0.15)",
+    border: "1px solid rgba(255,255,255,0.22)",
   },
+
   th: {
     textAlign: "left",
     padding: "12px 10px",
-    borderBottom: "1px solid rgba(255,255,255,0.10)",
     whiteSpace: "nowrap",
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "rgba(255,255,255,0.03)",
   },
   thButton: {
     all: "unset",
     cursor: "pointer",
   },
+
   tr: {},
+
   td: {
     padding: "12px 10px",
-    borderBottom: "1px solid rgba(255,255,255,0.05)",
-    whiteSpace: "nowrap",
+    border: "1px solid rgba(255,255,255,0.12)",
+    verticalAlign: "top",
+    userSelect: "none",
   },
-  link: {
+
+  selectableText: {
+    userSelect: "text",
+  },
+
+  selectableLink: {
+    userSelect: "text",
+    display: "inline-block",
     textDecoration: "underline",
     wordBreak: "break-all",
     color: "#7aa2ff",
   },
 };
-
