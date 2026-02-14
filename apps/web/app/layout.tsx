@@ -1,11 +1,12 @@
 // apps/web/app/layout.tsx
 import type { Metadata } from "next";
-import { GoogleAnalytics } from "@next/third-parties/google";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ac-airesearch.com"),
   title: "AC-research",
-  description: "키워드 하나로 미국 SEC / 국내 DART 재무제표, 유튜브, 논문을 한 번에 검색하는 리서치 도구입니다.",
+  description:
+    "키워드 하나로 미국 SEC / 국내 DART 재무제표, 유튜브, 논문을 한 번에 검색하는 리서치 도구입니다.",
   alternates: {
     canonical: "https://ac-airesearch.com",
   },
@@ -19,14 +20,16 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://ac-airesearch.com",
     title: "AC-research",
-    description: "키워드 하나로 미국 SEC / 국내 DART 재무제표, 유튜브, 논문을 한 번에 검색하는 리서치 도구입니다.",
+    description:
+      "키워드 하나로 미국 SEC / 국내 DART 재무제표, 유튜브, 논문을 한 번에 검색하는 리서치 도구입니다.",
     siteName: "AC-research",
     locale: "ko_KR",
   },
   twitter: {
     card: "summary",
     title: "AC-research",
-    description: "키워드 하나로 미국 SEC / 국내 DART 재무제표, 유튜브, 논문을 한 번에 검색하는 리서치 도구입니다.",
+    description:
+      "키워드 하나로 미국 SEC / 국내 DART 재무제표, 유튜브, 논문을 한 번에 검색하는 리서치 도구입니다.",
   },
 };
 
@@ -57,12 +60,35 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <head>
         <link rel="me" href="https://blog.naver.com/hanryang72" />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+
+        {gaId ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga4-init" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${gaId}', { anonymize_ip: true });
+              `}
+            </Script>
+          </>
+        ) : null}
       </head>
 
       <body style={{ margin: 0, background: "#0b0f14", color: "#e6edf3" }}>
-        {/* styled-jsx 금지: Server Component에서 빌드 에러남. 일반 style 태그로 처리 */}
         <style>{`
           .blogBanner {
             display: block;
@@ -114,7 +140,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               boxSizing: "border-box",
             }}
           >
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 14 }}>리서치 보조 도구</div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 14 }}>
+              리서치 보조 도구
+            </div>
 
             <div style={{ display: "grid", gap: 10 }}>
               {[
@@ -154,9 +182,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               ))}
             </div>
 
-            <a className="blogBanner" href="https://blog.naver.com/hanryang72" target="_blank" rel="noopener noreferrer">
+            <a
+              className="blogBanner"
+              href="https://blog.naver.com/hanryang72"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <div className="blogBannerCard">
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 8,
+                  }}
+                >
                   <div className="blogNBadge">N</div>
                   <div style={{ fontSize: 15, fontWeight: 800 }}>ACresearch 센터</div>
                 </div>
@@ -167,10 +207,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div style={{ height: 18 }} />
           </aside>
 
-          <main style={{ flex: 1, padding: 28, boxSizing: "border-box" }}>{children}</main>
+          <main style={{ flex: 1, padding: 28, boxSizing: "border-box" }}>
+            {children}
+          </main>
         </div>
-
-        {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
       </body>
     </html>
   );
