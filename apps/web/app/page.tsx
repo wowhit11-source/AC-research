@@ -104,7 +104,7 @@ function countOf(data: ResearchResponse | null, tab: TabId) {
 }
 
 export default function Home() {
-  const [query, setQuery] = useState("NVDA");
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ResearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -270,7 +270,7 @@ export default function Home() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => (e.key === "Enter" ? search() : null)}
-            placeholder="예: D15, 005930, NVDA, AI inference"
+            placeholder="예: D15, 005930, , AI inference"
             style={{
               flex: 1,
               height: 40,
