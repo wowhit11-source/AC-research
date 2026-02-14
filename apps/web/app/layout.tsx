@@ -1,5 +1,6 @@
 // apps/web/app/layout.tsx
 import type { Metadata } from "next";
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ac-airesearch.com"),
@@ -30,6 +31,8 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const gaId = process.env.NEXT_PUBLIC_GA_ID;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -54,14 +57,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <head>
         <link rel="me" href="https://blog.naver.com/hanryang72" />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
-        />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
       </head>
 
       <body style={{ margin: 0, background: "#0b0f14", color: "#e6edf3" }}>
@@ -157,12 +154,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               ))}
             </div>
 
-            <a
-              className="blogBanner"
-              href="https://blog.naver.com/hanryang72"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a className="blogBanner" href="https://blog.naver.com/hanryang72" target="_blank" rel="noopener noreferrer">
               <div className="blogBannerCard">
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                   <div className="blogNBadge">N</div>
@@ -177,6 +169,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
           <main style={{ flex: 1, padding: 28, boxSizing: "border-box" }}>{children}</main>
         </div>
+
+        {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
       </body>
     </html>
   );
