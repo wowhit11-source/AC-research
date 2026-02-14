@@ -23,20 +23,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 14 }}>리서치 보조 도구</div>
 
             <div style={{ display: "grid", gap: 10 }}>
-           {[
-  { label: "ChatGPT", href: "https://chat.openai.com", icon: "/chatgpt.svg" },
-  { label: "Google Gemini", href: "https://gemini.google.com", icon: "/gemini.svg" },
-  { label: "Anthropic Claude", href: "https://claude.ai", icon: "/claude.svg" },
-  { label: "Google NotebookLM", href: "https://notebooklm.google.com", icon: "/notebooklm.svg" },
-].map((item) => (
-
-
-               <a
-  key={item.label}
-  href={item.href}
-  target="_blank"
-  rel="noopener noreferrer"
-
+              {[
+                { label: "ChatGPT", href: "https://chat.openai.com", icon: "/chatgpt.svg" },
+                { label: "Google Gemini", href: "https://gemini.google.com", icon: "/gemini.svg" },
+                { label: "Anthropic Claude", href: "https://claude.ai", icon: "/claude.svg" },
+                { label: "Google NotebookLM", href: "https://notebooklm.google.com", icon: "/notebooklm.svg" },
+              ].map((item) => (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -49,24 +46,78 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     background: "rgba(255,255,255,0.02)",
                   }}
                 >
-                 <img
-  src={item.icon}
-  alt={item.label}
-  style={{
-    width: 20,
-    height: 20,
-    objectFit: "contain"
-  }}
-/>
+                  <img
+                    src={item.icon}
+                    alt={item.label}
+                    style={{
+                      width: 20,
+                      height: 20,
+                      objectFit: "contain",
+                    }}
+                  />
 
                   <span style={{ fontSize: 14 }}>{item.label}</span>
                 </a>
               ))}
             </div>
 
-            <div style={{ height: 18 }} />
+            {/* 블로그 배너 추가 */}
+            <div
+              style={{
+                marginTop: 18,
+                padding: 16,
+                borderRadius: 12,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <a
+                href="https://blog.naver.com/hanryang72"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  textDecoration: "none",
+                  color: "#e6edf3",
+                  display: "block",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 8,
+                      background: "rgba(3, 199, 90, 0.18)",
+                      border: "1px solid rgba(3, 199, 90, 0.35)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 14,
+                      fontWeight: 800,
+                      color: "#e6edf3",
+                      lineHeight: 1,
+                    }}
+                  >
+                    N
+                  </div>
 
-           
+                  <div style={{ fontSize: 15, fontWeight: 800 }}>ACresearch 센터</div>
+                </div>
+
+                <div style={{ fontSize: 12, opacity: 0.75, lineHeight: 1.5 }}>
+                  ACresearch로 만든 정보를 공유하는 블로그입니다.
+                </div>
+              </a>
+            </div>
+
+            <div style={{ height: 18 }} />
           </aside>
 
           <main style={{ flex: 1, padding: 28, boxSizing: "border-box" }}>{children}</main>
