@@ -65,7 +65,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body style={{ margin: 0, background: "#0b0f14", color: "#e6edf3" }}>
-        <style jsx global>{`
+        {/* styled-jsx 금지: Server Component에서 빌드 에러남. 일반 style 태그로 처리 */}
+        <style>{`
           .blogBanner {
             display: block;
             text-decoration: none;
