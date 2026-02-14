@@ -5,7 +5,7 @@ import SecResultsTable from "@/components/SecResultsTable";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
 
-type TabId = "dart" | "sec" | "youtube" | "papers";
+type TabId = "dart" | "sec" | "youtube" | "papers" | "reports";
 
 interface ResearchMeta {
   elapsed_ms: number;
@@ -20,6 +20,7 @@ interface ResearchResponse {
     sec: any[];
     youtube: any[];
     papers: any[];
+    reports: any[];
   };
   meta: ResearchMeta;
 }
@@ -110,6 +111,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("sec");
 
+  // 체크박스 UI는 유지하되, 현재 백엔드가 소스 필터를 받지 않으므로 실제 요청에는 영향 없음
   const [sources, setSources] = useState<TabId[]>(["sec", "youtube", "papers"]);
 
   const toggleSource = (id: TabId) => {
@@ -145,13 +147,16 @@ export default function Home() {
           sec: unwrap(raw?.results?.sec),
           youtube: unwrap(raw?.results?.youtube),
           papers: unwrap(raw?.results?.papers),
+          reports: unwrap(raw?.results?.reports),
         },
       };
 
       setData(normalized);
 
-      const priority: TabId[] = ["dart", "sec", "youtube", "papers"];
-      const firstNonEmpty = priority.find((k) => (normalized.results?.[k]?.length ?? 0) > 0) || "sec";
+      // Reports 우선 노출 (있으면 Reports로, 없으면 기존 우선순위)
+      const priority: TabId[] = ["reports", "dart", "sec", "youtube", "papers"];
+      const firstNonEmpty =
+        priority.find((k) => (normalized.results?.[k]?.length ?? 0) > 0) || "sec";
       setTab(firstNonEmpty);
     } catch (e: any) {
       setError(e?.message ? String(e.message) : "Failed to fetch");
@@ -172,6 +177,7 @@ export default function Home() {
       { id: "sec" as const, label: "SEC", count: countOf(data, "sec") },
       { id: "youtube" as const, label: "YouTube", count: countOf(data, "youtube") },
       { id: "papers" as const, label: "Papers", count: countOf(data, "papers") },
+      { id: "reports" as const, label: "Reports", count: countOf(data, "reports") },
     ],
     [data]
   );
@@ -181,23 +187,42 @@ export default function Home() {
     return data.results?.[tab] ?? [];
   }, [data, tab]);
 
-  // ✅ 모든 탭 결과를 공통 테이블 Row 형태로 변환
+  // 공통 테이블 Row 형태로 변환
   const tableRows = useMemo(() => {
     return (currentItems as any[]).map((r: any) => {
-      const url = r?.url ?? r?.pdf_url ?? r?.main_url ?? "";
+      const url = r?.url ?? r?.pdf_url ?? r?.main_url ?? r?.link ?? "";
 
       const published =
-        r?.published_date ?? r?.published_at ?? r?.date ?? r?.publishedAt ?? "";
+        r?.published_date ??
+        r?.published_at ??
+        r?.date ??
+        r?.publishedAt ??
+        (tab === "papers" ? String(r?.year ?? "") : "");
 
       const ticker = r?.ticker ?? r?.symbol ?? "";
-      const sourceType = r?.source_type ?? r?.source ?? (tab === "sec" ? "SEC" : "");
+
+      const sourceType =
+        r?.source_type ??
+        r?.source ??
+        (tab === "sec" ? "SEC" : tab === "dart" ? "DART" : tab === "reports" ? "REPORT" : "");
 
       const title =
         r?.title ??
-        (tab === "sec" ? `${ticker} ${sourceType} ${published}` : "");
+        (tab === "sec"
+          ? `${ticker} ${sourceType} ${published}`
+          : tab === "dart"
+          ? `${r?.회사명 ?? ""} ${r?.["보고서 종류"] ?? ""} ${r?.["기준연도/분기"] ?? ""}`
+          : tab === "reports"
+          ? `${r?.title ?? ""}`
+          : "");
 
       const date =
-        r?.date ?? r?.published_date ?? r?.published_at ?? r?.year ?? "";
+        r?.date ??
+        r?.published_date ??
+        r?.published_at ??
+        r?.year ??
+        r?.publishedDate ??
+        "";
 
       return {
         source_type: String(sourceType ?? ""),
@@ -217,7 +242,9 @@ export default function Home() {
       ? "DART 결과 (국내)"
       : tab === "youtube"
       ? "YouTube 결과"
-      : "Papers 결과";
+      : tab === "papers"
+      ? "Papers 결과"
+      : "Reports 결과";
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -226,7 +253,6 @@ export default function Home() {
         키워드 하나로 미국 SEC / 국내 DART 재무제표, 유튜브, 논문을 한 번에 검색하는 리서치 도구입니다.
       </div>
 
-      {/* 안내 섹션 추가 */}
       <div style={infoCardStyle}>
         <div style={infoTitleStyle}>사용 안내</div>
 
@@ -270,7 +296,7 @@ export default function Home() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => (e.key === "Enter" ? search() : null)}
-            placeholder="예: D15, 005930, , AI inference"
+            placeholder="예: D15, 005930, ALB, AI inference"
             style={{
               flex: 1,
               height: 40,
@@ -316,6 +342,9 @@ export default function Home() {
           </span>
           <span onClick={() => toggleSource("dart")} style={chipStyle(sources.includes("dart"))}>
             재무제표(DART)
+          </span>
+          <span onClick={() => toggleSource("reports")} style={chipStyle(sources.includes("reports"))}>
+            리포트
           </span>
         </div>
 
