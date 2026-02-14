@@ -13,8 +13,10 @@ DART_LIST_URL = "https://opendart.fss.or.kr/api/list.json"
 DART_CORPCODE_URL = "https://opendart.fss.or.kr/api/corpCode.xml"
 DART_VIEW_URL = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo={rcp_no}"
 TIMEOUT = 35
+
 ANNUAL_KEYWORDS = ("사업보고서",)
 QUARTERLY_KEYWORDS = ("반기보고서", "1분기보고서", "3분기보고서")
+MAJOR_EVENT_KEYWORDS = ("주요사항보고서",)
 
 
 def _get_corp_code_from_stock_code(stock_code: str, api_key: str) -> tuple[str, str]:
@@ -76,45 +78,73 @@ def _parse_rcept_dt(dt_str: str) -> str:
 
 
 def collect_dart_reports(stock_code: str) -> list[dict]:
-    """5y annual + 4 quarters. Returns list of dicts: 회사명, 보고서 종류, 기준연도/분기, 제출일, url."""
+    """
+    5y annual + 4 quarters + recent 1y major events(주요사항보고서).
+    Returns list of dicts: 회사명, 보고서 종류, 기준연도/분기, 제출일, url.
+    """
     if not DART_API_KEY:
         raise ValueError("DART_API_KEY 환경변수가 설정되지 않았습니다.")
     corp_code, corp_name = _get_corp_code_from_stock_code(stock_code, DART_API_KEY)
+
     end_date = datetime.now()
     bgn_date = end_date - timedelta(days=365 * 5)
     bgn_de = bgn_date.strftime("%Y%m%d")
     end_de = end_date.strftime("%Y%m%d")
+
     raw = _fetch_list(corp_code, bgn_de, end_de, DART_API_KEY)
     results = []
+
     for item in raw:
         report_nm = (item.get("report_nm") or "").strip()
         rcept_no = (item.get("rcept_no") or "").strip()
         rcept_dt = (item.get("rcept_dt") or "").strip()
         if not rcept_no:
             continue
+
+        kind = None
+        base_str = ""
+
         if any(k in report_nm for k in ANNUAL_KEYWORDS):
             kind = "연간"
             base = re.search(r"\((\d{4})\)", report_nm)
-            base_str = base.group(1) if base else report_nm[:4] if len(report_nm) >= 4 else ""
+            base_str = base.group(1) if base else (report_nm[:4] if len(report_nm) >= 4 else "")
         elif any(k in report_nm for k in QUARTERLY_KEYWORDS):
             kind = "분기"
             base = re.search(r"(\d{4}년?\s*[반기\d]?분기)", report_nm) or re.search(r"\((\d{4}[-\s]\d)", report_nm)
             base_str = base.group(1).strip() if base else (report_nm[:20] if len(report_nm) >= 20 else report_nm)
+        elif any(k in report_nm for k in MAJOR_EVENT_KEYWORDS):
+            # 주요사항보고서: 최근 1년만 따로 제한할 것이므로 kind만 분리
+            kind = "주요사항(1y)"
+            base_str = report_nm
         else:
             continue
-        results.append({
-            "회사명": corp_name,
-            "보고서 종류": kind,
-            "기준연도/분기": base_str,
-            "제출일": _parse_rcept_dt(rcept_dt),
-            "url": DART_VIEW_URL.format(rcp_no=rcept_no),
-        })
+
+        results.append(
+            {
+                "회사명": corp_name,
+                "보고서 종류": kind,
+                "기준연도/분기": base_str,
+                "제출일": _parse_rcept_dt(rcept_dt),
+                "url": DART_VIEW_URL.format(rcp_no=rcept_no),
+            }
+        )
+
     annual = [r for r in results if r["보고서 종류"] == "연간"]
     quarterly = [r for r in results if r["보고서 종류"] == "분기"]
+    major = [r for r in results if r["보고서 종류"] == "주요사항(1y)"]
+
     annual.sort(key=lambda x: x["제출일"], reverse=True)
     quarterly.sort(key=lambda x: x["제출일"], reverse=True)
+    major.sort(key=lambda x: x["제출일"], reverse=True)
+
     annual = annual[:5]
     quarterly = quarterly[:4]
-    combined = annual + quarterly
+
+    # 주요사항보고서: 최근 1년만
+    cutoff = (end_date - timedelta(days=365)).strftime("%Y-%m-%d")
+    major = [r for r in major if r["제출일"] and r["제출일"] >= cutoff]
+    major = major[:30]
+
+    combined = annual + quarterly + major
     combined.sort(key=lambda x: x["제출일"], reverse=True)
     return combined
