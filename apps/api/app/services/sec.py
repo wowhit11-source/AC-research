@@ -1,4 +1,4 @@
-"""SEC EDGAR 10-K/10-Q link collection. No Streamlit dependency."""
+"""SEC EDGAR 10-K/10-Q/8-K link collection. No Streamlit dependency."""
 import datetime as dt
 import requests
 
@@ -48,46 +48,70 @@ def _filing_records_from_recent(
             continue
         accession_nodash = acc.replace("-", "")
         cik_no_padding = str(int(cik))
-        doc_url = (
-            f"https://www.sec.gov/Archives/edgar/data/{cik_no_padding}/{accession_nodash}/{primary}"
+        doc_url = f"https://www.sec.gov/Archives/edgar/data/{cik_no_padding}/{accession_nodash}/{primary}"
+        records.append(
+            {
+                "source_type": "SEC",
+                "url": doc_url,
+                "published_date": filed_date.isoformat(),
+                "ticker": None,
+            }
         )
-        records.append({
-            "source_type": "SEC",
-            "url": doc_url,
-            "published_date": filed_date.isoformat(),
-            "ticker": None,
-        })
     records.sort(key=lambda r: r["published_date"], reverse=True)
     if max_items is not None:
         records = records[:max_items]
     return records
 
 
-def _get_recent_10k_filings(cik: str, years: int = 5) -> list[dict]:
+def _get_recent_filings_payload(cik: str) -> dict:
     padded_cik = cik.zfill(10)
     api_url = f"https://data.sec.gov/submissions/CIK{padded_cik}.json"
     resp = _sec_get(api_url, host="data.sec.gov")
     data = resp.json()
-    filings = data.get("filings", {}).get("recent", {})
+    return data.get("filings", {}).get("recent", {})
+
+
+def _get_recent_10k_filings(cik: str, years: int = 5) -> list[dict]:
+    filings = _get_recent_filings_payload(cik)
     cutoff = dt.date.today() - dt.timedelta(days=365 * years)
     return _filing_records_from_recent(cik, filings, ["10-K"], cutoff, None)
 
 
 def _get_recent_10q_filings(cik: str, quarters: int = 4) -> list[dict]:
-    padded_cik = cik.zfill(10)
-    api_url = f"https://data.sec.gov/submissions/CIK{padded_cik}.json"
-    resp = _sec_get(api_url, host="data.sec.gov")
-    data = resp.json()
-    filings = data.get("filings", {}).get("recent", {})
+    filings = _get_recent_filings_payload(cik)
     return _filing_records_from_recent(cik, filings, ["10-Q"], None, quarters)
 
 
+def _get_recent_8k_filings(cik: str, days: int = 365, max_items: int = 30) -> list[dict]:
+    filings = _get_recent_filings_payload(cik)
+    cutoff = dt.date.today() - dt.timedelta(days=days)
+    return _filing_records_from_recent(cik, filings, ["8-K"], cutoff, max_items)
+
+
 def collect_sec_links(ticker: str) -> list[dict]:
-    """Recent 5y 10-K + 4 quarters 10-Q. Each dict: source_type, url, published_date, ticker."""
+    """
+    Recent 5y 10-K + 4 quarters 10-Q + recent 1y 8-K.
+    Each dict: source_type, url, published_date, ticker.
+    """
     t = ticker.upper()
     cik = _get_cik_from_ticker(ticker)
-    records = _get_recent_10k_filings(cik, years=5) + _get_recent_10q_filings(cik, quarters=4)
-    records.sort(key=lambda r: r["published_date"], reverse=True)
+
+    records = (
+        _get_recent_10k_filings(cik, years=5)
+        + _get_recent_10q_filings(cik, quarters=4)
+        + _get_recent_8k_filings(cik, days=365, max_items=30)
+    )
+
+    seen = set()
+    deduped = []
     for r in records:
+        u = r.get("url")
+        if not u or u in seen:
+            continue
+        seen.add(u)
         r["ticker"] = t
-    return records
+        deduped.append(r)
+
+    deduped.sort(key=lambda r: r["published_date"], reverse=True)
+    return deduped
+
