@@ -1,8 +1,10 @@
 """DART Open API: domestic filings. Uses DART_API_KEY from env."""
+from __future__ import annotations
+
 import io
 import re
 import zipfile
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree as ET
 
 import requests
@@ -42,7 +44,7 @@ def _get_corp_code_from_stock_code(stock_code: str, api_key: str) -> tuple[str, 
 
 
 def _fetch_list(corp_code: str, bgn_de: str, end_de: str, api_key: str) -> list[dict]:
-    all_items = []
+    all_items: list[dict] = []
     page_no = 1
     while True:
         r = requests.get(
@@ -77,10 +79,50 @@ def _parse_rcept_dt(dt_str: str) -> str:
     return f"{dt_str[:4]}-{dt_str[4:6]}-{dt_str[6:8]}"
 
 
-def collect_dart_reports(stock_code: str) -> list[dict]:
+def _filter_last_24h(records: list[dict]) -> list[dict]:
+    """
+    제출일(YYYY-MM-DD) 기준으로 최근 24시간 이내 분만 남긴다.
+
+    - DART는 시각 정보가 없어 날짜만 있으므로,
+      현재 UTC 기준 24시간 전의 date를 cutoff로 사용한다.
+    - 제출일 >= cutoff_date 인 항목만 포함.
+    """
+    if not records:
+        return []
+
+    now_utc = datetime.now(timezone.utc)
+    cutoff_dt = now_utc - timedelta(hours=24)
+    cutoff_date = cutoff_dt.date()
+
+    filtered: list[dict] = []
+    for r in records:
+        date_str = r.get("제출일")
+        if not date_str:
+            continue
+        try:
+            d = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except Exception:
+            continue
+        if d >= cutoff_date:
+            filtered.append(r)
+
+    filtered.sort(key=lambda x: x["제출일"], reverse=True)
+    return filtered
+
+
+def collect_dart_reports(stock_code: str, daily_only: bool = False) -> list[dict]:
     """
     5y annual + 4 quarters + recent 1y major events(주요사항보고서).
-    Returns list of dicts: 회사명, 보고서 종류, 기준연도/분기, 제출일, url.
+
+    Returns list of dicts:
+      - 회사명
+      - 보고서 종류: "연간" / "분기" / "주요사항(1y)"
+      - 기준연도/분기
+      - 제출일 (YYYY-MM-DD)
+      - url
+
+    daily_only=False: 기존과 동일 동작.
+    daily_only=True : 전체 결과 중에서 제출일 기준 최근 24시간(UTC 기준) 이내만 반환.
     """
     if not DART_API_KEY:
         raise ValueError("DART_API_KEY 환경변수가 설정되지 않았습니다.")
@@ -92,7 +134,7 @@ def collect_dart_reports(stock_code: str) -> list[dict]:
     end_de = end_date.strftime("%Y%m%d")
 
     raw = _fetch_list(corp_code, bgn_de, end_de, DART_API_KEY)
-    results = []
+    results: list[dict] = []
 
     for item in raw:
         report_nm = (item.get("report_nm") or "").strip()
@@ -101,7 +143,7 @@ def collect_dart_reports(stock_code: str) -> list[dict]:
         if not rcept_no:
             continue
 
-        kind = None
+        kind: str | None = None
         base_str = ""
 
         if any(k in report_nm for k in ANNUAL_KEYWORDS):
@@ -141,10 +183,14 @@ def collect_dart_reports(stock_code: str) -> list[dict]:
     quarterly = quarterly[:4]
 
     # 주요사항보고서: 최근 1년만
-    cutoff = (end_date - timedelta(days=365)).strftime("%Y-%m-%d")
-    major = [r for r in major if r["제출일"] and r["제출일"] >= cutoff]
+    cutoff_1y = (end_date - timedelta(days=365)).strftime("%Y-%m-%d")
+    major = [r for r in major if r["제출일"] and r["제출일"] >= cutoff_1y]
     major = major[:30]
 
     combined = annual + quarterly + major
     combined.sort(key=lambda x: x["제출일"], reverse=True)
+
+    if daily_only:
+        combined = _filter_last_24h(combined)
+
     return combined
