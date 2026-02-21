@@ -1,8 +1,17 @@
 """Environment and app config. No hardcoded API keys."""
 import os
 
-DART_API_KEY = os.getenv("DART_API_KEY")
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+
+def _get_env(name: str) -> str | None:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    value = value.strip()
+    return value if value else None
+
+
+DART_API_KEY = _get_env("DART_API_KEY")
+YOUTUBE_API_KEY = _get_env("YOUTUBE_API_KEY")
 
 # News API (NEW)
-NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+NEWS_API_KEY = _get_env("NEWS_API_KEY")
