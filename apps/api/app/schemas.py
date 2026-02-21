@@ -26,6 +26,7 @@ class ResearchResults(BaseModel):
     youtube: list[dict[str, Any]] = []
     papers: list[dict[str, Any]] = []
     reports: list[dict[str, Any]] = []
+    news: list[dict[str, Any]] = []  # NEW
 
 
 class ResearchResponse(BaseModel):
