@@ -114,6 +114,9 @@ export default function Home() {
   // 체크박스 UI는 유지하되, 현재 백엔드가 소스 필터를 받지 않으므로 실제 요청에는 영향 없음
   const [sources, setSources] = useState<TabId[]>(["sec", "youtube", "papers"]);
 
+  // 최근 24시간 필터 토글
+  const [dailyOnly, setDailyOnly] = useState(false);
+
   const toggleSource = (id: TabId) => {
     setSources((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
@@ -127,7 +130,7 @@ export default function Home() {
     setData(null);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/research`, {
+      const res = await fetch(`${BACKEND_URL}/api/research?daily_only=${dailyOnly}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: q }),
@@ -163,13 +166,15 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [query]);
+  }, [query, dailyOnly]);
 
   const downloadExcel = useCallback(() => {
     if (!data?.slug) return;
-    const url = `${BACKEND_URL}/api/research/${encodeURIComponent(data.slug)}/excel`;
+    const url = `${BACKEND_URL}/api/research/${encodeURIComponent(
+      data.slug
+    )}/excel?daily_only=${dailyOnly}`;
     window.open(url, "_blank");
-  }, [data]);
+  }, [data, dailyOnly]);
 
   const tabs = useMemo(
     () => [
@@ -345,6 +350,32 @@ export default function Home() {
           </span>
           <span onClick={() => toggleSource("reports")} style={chipStyle(sources.includes("reports"))}>
             리포트
+          </span>
+        </div>
+
+        <div style={{ height: 10 }} />
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <label
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              cursor: "pointer",
+              color: "#e6edf3",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={dailyOnly}
+              onChange={(e) => setDailyOnly(e.target.checked)}
+              style={{ margin: 0 }}
+            />
+            <span>최근 24시간 이내 자료만 보기</span>
+          </label>
+          <span style={{ fontSize: 11, opacity: 0.8 }}>
+            SEC / DART / YouTube에만 적용됩니다.
           </span>
         </div>
 
