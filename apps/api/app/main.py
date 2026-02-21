@@ -40,29 +40,35 @@ app.add_middleware(
 
 
 def _normalize_item(source: str, raw: dict[str, Any]) -> dict[str, Any]:
-    """Add title, url, date, snippet for frontend. Keep raw fields."""
-    out = dict(raw)
-    if source == "sec":
-        out["title"] = f"{raw.get('ticker', '')} {raw.get('source_type', '')} {raw.get('published_date', '')}"
-        out["url"] = raw.get("url", "")
-        out["date"] = raw.get("published_date", "")
-        out["snippet"] = ""
-    elif source == "dart":
-        out["title"] = f"{raw.get('회사명', '')} {raw.get('보고서 종류', '')} {raw.get('기준연도/분기', '')}"
-        out["url"] = raw.get("url", "")
-        out["date"] = raw.get("제출일", "")
-        out["snippet"] = raw.get("기준연도/분기", "")
-    elif source == "youtube":
-        out["title"] = raw.get("title", "")
-        out["url"] = raw.get("url", "")
-        out["date"] = raw.get("published_at", "")
-        out["snippet"] = f"{raw.get('duration_minutes', 0)} min"
-    elif source == "papers":
-        out["title"] = raw.get("title", "")
-        out["url"] = raw.get("pdf_url", "") or raw.get("main_url", "")
-        out["date"] = str(raw.get("year", ""))
-        out["snippet"] = f"{raw.get('authors', '')} | {raw.get('venue', '')}"
-    return out
+  """Add title, url, date, snippet for frontend. Keep raw fields."""
+  out = dict(raw)
+
+  if source == "sec":
+      out["title"] = f"{raw.get('ticker', '')} {raw.get('source_type', '')} {raw.get('published_date', '')}"
+      out["url"] = raw.get("url", "")
+      out["date"] = raw.get("published_date", "")
+      out["snippet"] = ""
+  elif source == "dart":
+      out["title"] = f"{raw.get('회사명', '')} {raw.get('보고서 종류', '')} {raw.get('기준연도/분기', '')}"
+      out["url"] = raw.get("url", "")
+      out["date"] = raw.get("제출일", "")
+      out["snippet"] = raw.get("기준연도/분기", "")
+  elif source == "youtube":
+      out["title"] = raw.get("title", "")
+      out["url"] = raw.get("url", "")
+      out["date"] = raw.get("published_at", "")
+      out["snippet"] = f"{raw.get('duration_minutes', 0)} min"
+  elif source == "papers":
+      out["title"] = raw.get("title", "")
+      out["url"] = raw.get("pdf_url", "") or raw.get("main_url", "")
+      out["date"] = str(raw.get("year", ""))
+      out["snippet"] = f"{raw.get('authors', '')} | {raw.get('venue', '')}"
+  elif source == "news":
+      out["title"] = raw.get("title", "")
+      out["url"] = raw.get("url", "")
+      out["date"] = raw.get("published_at", "")
+      out["snippet"] = raw.get("source_name", "")
+  return out
 
 
 @app.get("/health")
@@ -74,8 +80,8 @@ def health():
 def research(body: ResearchRequest, daily_only: bool = False):
     """
     daily_only:
-      - False: 기존과 동일 (5y 10-K, 4x 10-Q, 1y 8-K, DART 5y/4q/1y, YouTube 1y)
-      - True : SEC/DART/YouTube를 최근 24시간 이내 자료로 제한
+      - False: 기존과 동일 (5y 10-K, 4x 10-Q, 1y 8-K, DART 5y/4q/1y, YouTube 1y, News 30일)
+      - True : SEC/DART/YouTube/News를 최근 24시간 이내 자료로 제한
                (papers는 논문 특성상 그대로 유지)
     """
     query = (body.query or "").strip()
@@ -97,6 +103,7 @@ def research(body: ResearchRequest, daily_only: bool = False):
     youtube_list: list[dict[str, Any]] = []
     papers_list: list[dict[str, Any]] = []
     reports_list: list[dict[str, Any]] = []
+    news_list: list[dict[str, Any]] = []
 
     # DART (domestic stock code: 6+ digits)
     if is_korea_stock(query):
@@ -135,6 +142,15 @@ def research(body: ResearchRequest, daily_only: bool = False):
     except Exception as e:
         errors.append(ErrorItem(source="papers", message=str(e)))
 
+    # News
+    try:
+        from app.services.news import search_news_articles
+
+        rows = search_news_articles(query, max_results=40, daily_only=daily_only)
+        news_list = [_normalize_item("news", r) for r in rows]
+    except Exception as e:
+        errors.append(ErrorItem(source="news", message=str(e)))
+
     # Reports screening (PDF 포함 환영, 도메인 화이트리스트 + 점수 정렬)
     try:
         candidates: list[dict[str, Any]] = []
@@ -167,6 +183,7 @@ def research(body: ResearchRequest, daily_only: bool = False):
         youtube=youtube_list,
         papers=papers_list,
         reports=reports_list,
+        news=news_list,
     )
 
     meta = ResearchMeta(elapsed_ms=round(elapsed_ms, 2), errors=errors)
@@ -251,6 +268,20 @@ def research_excel(slug: str, daily_only: bool = False):
                 )
             if rows:
                 pd.DataFrame(rows).to_excel(writer, sheet_name="Reports", index=False)
+
+        if results.get("news"):
+            rows = []
+            for it in results["news"]:
+                rows.append(
+                    {
+                        "title": it.get("title"),
+                        "url": it.get("url"),
+                        "published_at": it.get("date") or it.get("published_at"),
+                        "source_name": it.get("snippet") or it.get("source_name"),
+                    }
+                )
+            if rows:
+                pd.DataFrame(rows).to_excel(writer, sheet_name="News", index=False)
 
     buffer.seek(0)
     filename = f"research_{slug}.xlsx"
