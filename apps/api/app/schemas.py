@@ -17,16 +17,16 @@ class ErrorItem(BaseModel):
 
 class ResearchMeta(BaseModel):
     elapsed_ms: float
-    errors: list[ErrorItem] = []
+    errors: list[ErrorItem] = Field(default_factory=list)
 
 
 class ResearchResults(BaseModel):
     dart: Optional[dict[str, Any]] = None
     sec: Optional[dict[str, Any]] = None
-    youtube: list[dict[str, Any]] = []
-    papers: list[dict[str, Any]] = []
-    reports: list[dict[str, Any]] = []
-    news: list[dict[str, Any]] = []  # NEW
+    youtube: list[dict[str, Any]] = Field(default_factory=list)
+    papers: list[dict[str, Any]] = Field(default_factory=list)
+    reports: list[dict[str, Any]] = Field(default_factory=list)
+    news: list[dict[str, Any]] = Field(default_factory=list)  # NEW
 
 
 class ResearchResponse(BaseModel):
