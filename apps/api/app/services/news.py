@@ -1,22 +1,28 @@
 """News search service for AC-research.
 
-- Uses NEWS_API_KEY from env (configured in app.config).
-- Returns URL 중심의 뉴스 리스트.
-- 같은 URL이 여러 번 나오는 경우 URL 기준으로 중복 제거.
-- daily_only=True 인 경우 최근 24시간 이내 기사만 조회.
-- daily_only=False 인 경우 기본 30일 범위에서 조회.
+지원 소스
+- NewsAPI.org  (영문/비한글 쿼리 위주)
+- NAVER 뉴스 검색 API (한글 쿼리 위주)
+
+동작 원리
+- 쿼리에 한글이 포함되어 있으면 네이버 뉴스 우선 사용
+- 그 외에는 NewsAPI.org 사용
+- 각각 URL 기준 중복 제거 + 최신순 정렬
+- daily_only=True  이면 최근 24시간 이내 기사만 사용
+- daily_only=False 이면 최근 30일 범위 사용
 """
 
 from __future__ import annotations
 
 import time
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any, Dict, List, Tuple
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import requests
 
-from app.config import NEWS_API_KEY
+from app.config import NEWS_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
 
 
 # 1시간 메모리 캐시 (프로세스 단위)
@@ -28,10 +34,18 @@ def _now_ts() -> float:
   return time.time()
 
 
-def _cache_key(query: str, max_results: int, daily_only: bool) -> str:
+def _has_hangul(text: str) -> bool:
+  """쿼리에 한글이 하나라도 있으면 True."""
+  for ch in text:
+    if "\uac00" <= ch <= "\ud7a3":
+      return True
+  return False
+
+
+def _cache_key(provider: str, query: str, max_results: int, daily_only: bool) -> str:
   q = (query or "").strip().lower()
   d = "1d" if daily_only else "default"
-  return f"news:{q}:max={max_results}:range={d}"
+  return f"news:{provider}:{q}:max={max_results}:range={d}"
 
 
 def _cache_get(key: str) -> List[Dict[str, Any]] | None:
@@ -85,8 +99,8 @@ def _canonicalize_url(url: str) -> str:
     return url.strip()
 
 
-def _build_time_range(daily_only: bool) -> Tuple[str | None, str | None]:
-  """News API에 전달할 from/to 파라미터 생성.
+def _build_time_range_newsapi(daily_only: bool) -> Tuple[str | None, str | None]:
+  """NewsAPI.org에 전달할 from/to 파라미터 생성.
 
   - daily_only=True  → 최근 24시간
   - daily_only=False → 최근 30일
@@ -104,45 +118,66 @@ def _build_time_range(daily_only: bool) -> Tuple[str | None, str | None]:
   )
 
 
-def search_news_articles(
-  query: str,
-  max_results: int = 40,
-  daily_only: bool = False,
+def _filter_by_timerange(
+  items: List[Dict[str, Any]],
+  key: str,
+  daily_only: bool,
 ) -> List[Dict[str, Any]]:
-  """뉴스 검색.
-
-  반환 형식: 각 원소는 아래 키를 가진 dict
-  - title: 기사 제목
-  - url: 원문 URL
-  - published_at: ISO8601 문자열
-  - source_name: 매체 이름
-
-  중복 제거:
-  - 같은 canonical URL(도메인+경로+정리된 쿼리)이 여러 번 나오면 최초 1개만 유지.
-  """
-
-  if not query:
+  """pubDate 같은 문자열에서 datetime을 뽑아 최근 24시간/30일만 남김."""
+  if not items:
     return []
 
-  # NEWS_API_KEY가 없으면 조용히 비활성화
+  now = datetime.now(timezone.utc)
+  if daily_only:
+    from_dt = now - timedelta(days=1)
+  else:
+    from_dt = now - timedelta(days=30)
+
+  filtered: List[Dict[str, Any]] = []
+
+  for it in items:
+    raw = (it.get(key) or "").strip()
+    if not raw:
+      continue
+    try:
+      dt = parsedate_to_datetime(raw)
+      if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+      dt_utc = dt.astimezone(timezone.utc)
+    except Exception:
+      # 파싱 실패 시 일단 포함
+      filtered.append(it)
+      continue
+
+    if from_dt <= dt_utc <= now:
+      filtered.append(it)
+
+  return filtered
+
+
+def _search_newsapi(
+  query: str,
+  max_results: int,
+  daily_only: bool,
+) -> List[Dict[str, Any]]:
+  """NewsAPI.org 기반 뉴스 검색 (주로 영문)."""
   if not NEWS_API_KEY:
     return []
 
-  # 캐시 확인
-  key = _cache_key(query, max_results, daily_only)
+  provider = "newsapi"
+  key = _cache_key(provider, query, max_results, daily_only)
   cached = _cache_get(key)
   if cached is not None:
     return cached[:max_results]
 
-  from_dt, to_dt = _build_time_range(daily_only)
+  from_dt, to_dt = _build_time_range_newsapi(daily_only)
 
-  # 대표적인 패턴(예: newsapi.org)을 기준으로 한 기본 구현
   url = "https://newsapi.org/v2/everything"
   params: Dict[str, Any] = {
     "q": query,
     "pageSize": min(max_results, 100),
     "sortBy": "publishedAt",
-    "language": "en",  # 필요하면 "ko"로 변경 가능
+    "language": "en",
     "apiKey": NEWS_API_KEY,
   }
   if from_dt:
@@ -155,12 +190,10 @@ def search_news_articles(
     resp.raise_for_status()
     data = resp.json()
   except Exception:
-    # 뉴스는 필수 소스가 아니므로 실패 시 그냥 빈 리스트 반환
     return []
 
   articles = data.get("articles") or []
   results: List[Dict[str, Any]] = []
-
   seen_urls: set[str] = set()
 
   for art in articles:
@@ -170,7 +203,6 @@ def search_news_articles(
 
     canon = _canonicalize_url(raw_url)
     if not canon or canon in seen_urls:
-      # 같은 기사 URL이 여러 번 나오는 케이스는 여기서 제거
       continue
     seen_urls.add(canon)
 
@@ -190,7 +222,6 @@ def search_news_articles(
     if len(results) >= max_results:
       break
 
-  # 최신순 정렬 (API 정렬과 무관하게 한 번 더 정렬)
   def _sort_key(item: Dict[str, Any]) -> Any:
     ts_str = item.get("published_at") or ""
     try:
@@ -199,6 +230,138 @@ def search_news_articles(
       return datetime.min.replace(tzinfo=timezone.utc)
 
   results.sort(key=_sort_key, reverse=True)
-
   _cache_set(key, results)
   return results[:max_results]
+
+
+def _search_naver(
+  query: str,
+  max_results: int,
+  daily_only: bool,
+) -> List[Dict[str, Any]]:
+  """NAVER 뉴스 검색 API 기반 검색 (주로 한글)."""
+  if not NAVER_CLIENT_ID or not NAVER_CLIENT_SECRET:
+    return []
+
+  provider = "naver"
+  key = _cache_key(provider, query, max_results, daily_only)
+  cached = _cache_get(key)
+  if cached is not None:
+    return cached[:max_results]
+
+  url = "https://openapi.naver.com/v1/search/news.json"
+  display = min(max_results, 100)
+
+  headers = {
+    "X-Naver-Client-Id": NAVER_CLIENT_ID,
+    "X-Naver-Client-Secret": NAVER_CLIENT_SECRET,
+  }
+  params: Dict[str, Any] = {
+    "query": query,
+    "display": display,
+    "start": 1,
+    "sort": "sim",  # 정확도순. 필요하면 "date"로 변경 가능
+  }
+
+  try:
+    resp = requests.get(url, headers=headers, params=params, timeout=20)
+    resp.raise_for_status()
+    data = resp.json()
+  except Exception:
+    return []
+
+  items = data.get("items") or []
+
+  # pubDate 기준으로 최근 24시간/30일 필터링
+  items = _filter_by_timerange(items, "pubDate", daily_only)
+
+  results: List[Dict[str, Any]] = []
+  seen_urls: set[str] = set()
+
+  for it in items:
+    raw_url = (it.get("link") or "").strip()
+    if not raw_url:
+      continue
+
+    canon = _canonicalize_url(raw_url)
+    if not canon or canon in seen_urls:
+      continue
+    seen_urls.add(canon)
+
+    title = (it.get("title") or "").strip()
+    pub_raw = (it.get("pubDate") or "").strip()
+    try:
+      dt = parsedate_to_datetime(pub_raw)
+      if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+      dt_utc = dt.astimezone(timezone.utc)
+      published_at = dt_utc.isoformat().replace("+00:00", "Z")
+    except Exception:
+      published_at = ""
+
+    source_name = (it.get("originallink") or "").strip()
+    if not source_name:
+      try:
+        parsed = urlparse(raw_url)
+        source_name = parsed.netloc
+      except Exception:
+        source_name = ""
+
+    results.append(
+      {
+        "title": title,
+        "url": raw_url,
+        "published_at": published_at or pub_raw,
+        "source_name": source_name,
+      }
+    )
+
+    if len(results) >= max_results:
+      break
+
+  def _sort_key(item: Dict[str, Any]) -> Any:
+    ts_str = item.get("published_at") or ""
+    try:
+      return datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+    except Exception:
+      try:
+        return parsedate_to_datetime(ts_str)
+      except Exception:
+        return datetime.min.replace(tzinfo=timezone.utc)
+
+  results.sort(key=_sort_key, reverse=True)
+  _cache_set(key, results)
+  return results[:max_results]
+
+
+def search_news_articles(
+  query: str,
+  max_results: int = 40,
+  daily_only: bool = False,
+) -> List[Dict[str, Any]]:
+  """통합 뉴스 검색 엔트리.
+
+  반환 형식: 각 원소는 아래 키를 가진 dict
+  - title: 기사 제목
+  - url: 원문 URL
+  - published_at: ISO8601 또는 원본 날짜 문자열
+  - source_name: 매체 이름
+  """
+  if not query:
+    return []
+
+  # 한글 포함 여부로 기본 소스 결정
+  if _has_hangul(query):
+    primary = _search_naver
+    fallback = _search_newsapi
+  else:
+    primary = _search_newsapi
+    fallback = _search_naver
+
+  results = primary(query, max_results=max_results, daily_only=daily_only)
+  if results:
+    return results[:max_results]
+
+  # 주 소스가 실패하면 보조 소스로라도 결과 시도
+  fallback_results = fallback(query, max_results=max_results, daily_only=daily_only)
+  return fallback_results[:max_results]
