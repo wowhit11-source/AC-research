@@ -5,7 +5,7 @@ import SecResultsTable from "@/components/SecResultsTable";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
 
-type TabId = "dart" | "sec" | "youtube" | "papers" | "reports";
+type TabId = "dart" | "sec" | "youtube" | "papers" | "reports" | "news";
 
 interface ResearchMeta {
   elapsed_ms: number;
@@ -21,6 +21,7 @@ interface ResearchResponse {
     youtube: any[];
     papers: any[];
     reports: any[];
+    news: any[];
   };
   meta: ResearchMeta;
 }
@@ -112,7 +113,7 @@ export default function Home() {
   const [tab, setTab] = useState<TabId>("sec");
 
   // 체크박스 UI는 유지하되, 현재 백엔드가 소스 필터를 받지 않으므로 실제 요청에는 영향 없음
-  const [sources, setSources] = useState<TabId[]>(["sec", "youtube", "papers"]);
+  const [sources, setSources] = useState<TabId[]>(["sec", "youtube", "papers", "news"]);
 
   // 최근 24시간 필터 토글
   const [dailyOnly, setDailyOnly] = useState(false);
@@ -151,13 +152,14 @@ export default function Home() {
           youtube: unwrap(raw?.results?.youtube),
           papers: unwrap(raw?.results?.papers),
           reports: unwrap(raw?.results?.reports),
+          news: unwrap(raw?.results?.news),
         },
       };
 
       setData(normalized);
 
-      // Reports 우선 노출 (있으면 Reports로, 없으면 기존 우선순위)
-      const priority: TabId[] = ["reports", "dart", "sec", "youtube", "papers"];
+      // Reports 우선 노출 (있으면 Reports로, 없으면 News → 나머지 우선순위)
+      const priority: TabId[] = ["reports", "news", "dart", "sec", "youtube", "papers"];
       const firstNonEmpty =
         priority.find((k) => (normalized.results?.[k]?.length ?? 0) > 0) || "sec";
       setTab(firstNonEmpty);
@@ -183,6 +185,7 @@ export default function Home() {
       { id: "youtube" as const, label: "YouTube", count: countOf(data, "youtube") },
       { id: "papers" as const, label: "Papers", count: countOf(data, "papers") },
       { id: "reports" as const, label: "Reports", count: countOf(data, "reports") },
+      { id: "news" as const, label: "News", count: countOf(data, "news") },
     ],
     [data]
   );
@@ -209,7 +212,15 @@ export default function Home() {
       const sourceType =
         r?.source_type ??
         r?.source ??
-        (tab === "sec" ? "SEC" : tab === "dart" ? "DART" : tab === "reports" ? "REPORT" : "");
+        (tab === "sec"
+          ? "SEC"
+          : tab === "dart"
+          ? "DART"
+          : tab === "reports"
+          ? "REPORT"
+          : tab === "news"
+          ? "NEWS"
+          : "");
 
       const title =
         r?.title ??
@@ -218,6 +229,8 @@ export default function Home() {
           : tab === "dart"
           ? `${r?.회사명 ?? ""} ${r?.["보고서 종류"] ?? ""} ${r?.["기준연도/분기"] ?? ""}`
           : tab === "reports"
+          ? `${r?.title ?? ""}`
+          : tab === "news"
           ? `${r?.title ?? ""}`
           : "");
 
@@ -249,13 +262,15 @@ export default function Home() {
       ? "YouTube 결과"
       : tab === "papers"
       ? "Papers 결과"
-      : "Reports 결과";
+      : tab === "reports"
+      ? "Reports 결과"
+      : "News 결과";
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ fontSize: 34, fontWeight: 800, marginBottom: 10 }}>AC-research</div>
       <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 18 }}>
-        키워드 하나로 미국 SEC / 국내 DART 재무제표, 유튜브, 논문을 한 번에 검색하는 리서치 도구입니다.
+        키워드 하나로 미국 SEC / 국내 DART 재무제표, 뉴스, 유튜브, 논문을 한 번에 검색하는 리서치 도구입니다.
       </div>
 
       <div style={infoCardStyle}>
@@ -269,8 +284,8 @@ export default function Home() {
         </div>
 
         <div style={infoTextStyle}>
-          유튜브 영상이나 논문을 검색할 때 티커 또는 종목번호만으로 검색하면 원하는 결과가 정확히 나오지 않을 수 있습니다.
-          이 경우에는 기업명 또는 관련 키워드를 함께 활용해 검색하시기 바랍니다.
+          유튜브 영상이나 논문, 뉴스 검색 시 티커 또는 종목번호만으로 검색하면 원하는 결과가 정확히
+          나오지 않을 수 있습니다. 이 경우에는 기업명 또는 관련 키워드를 함께 활용해 검색하시기 바랍니다.
         </div>
 
         <div style={infoSubTitleStyle}>사용 방법 (Notebook LM 기준)</div>
@@ -284,7 +299,7 @@ export default function Home() {
       </div>
 
       <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 8 }}>
-        검색어 또는 티커 (재무제표는 미국주식 티커, 국내주식은 종목번호, 유튜브/논문 검색어 사용)
+        검색어 또는 티커 (재무제표는 미국주식 티커, 국내주식은 종목번호, 뉴스/유튜브/논문 검색어 사용)
       </div>
 
       <div
@@ -351,6 +366,9 @@ export default function Home() {
           <span onClick={() => toggleSource("reports")} style={chipStyle(sources.includes("reports"))}>
             리포트
           </span>
+          <span onClick={() => toggleSource("news")} style={chipStyle(sources.includes("news"))}>
+            뉴스
+          </span>
         </div>
 
         <div style={{ height: 10 }} />
@@ -375,7 +393,7 @@ export default function Home() {
             <span>최근 24시간 이내 자료만 보기</span>
           </label>
           <span style={{ fontSize: 11, opacity: 0.8 }}>
-            SEC / DART / YouTube에만 적용됩니다.
+            SEC / DART / YouTube / News에만 적용됩니다.
           </span>
         </div>
 
