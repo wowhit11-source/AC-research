@@ -40,35 +40,35 @@ app.add_middleware(
 
 
 def _normalize_item(source: str, raw: dict[str, Any]) -> dict[str, Any]:
-  """Add title, url, date, snippet for frontend. Keep raw fields."""
-  out = dict(raw)
+    """Add title, url, date, snippet for frontend. Keep raw fields."""
+    out = dict(raw)
 
-  if source == "sec":
-      out["title"] = f"{raw.get('ticker', '')} {raw.get('source_type', '')} {raw.get('published_date', '')}"
-      out["url"] = raw.get("url", "")
-      out["date"] = raw.get("published_date", "")
-      out["snippet"] = ""
-  elif source == "dart":
-      out["title"] = f"{raw.get('회사명', '')} {raw.get('보고서 종류', '')} {raw.get('기준연도/분기', '')}"
-      out["url"] = raw.get("url", "")
-      out["date"] = raw.get("제출일", "")
-      out["snippet"] = raw.get("기준연도/분기", "")
-  elif source == "youtube":
-      out["title"] = raw.get("title", "")
-      out["url"] = raw.get("url", "")
-      out["date"] = raw.get("published_at", "")
-      out["snippet"] = f"{raw.get('duration_minutes', 0)} min"
-  elif source == "papers":
-      out["title"] = raw.get("title", "")
-      out["url"] = raw.get("pdf_url", "") or raw.get("main_url", "")
-      out["date"] = str(raw.get("year", ""))
-      out["snippet"] = f"{raw.get('authors', '')} | {raw.get('venue', '')}"
-  elif source == "news":
-      out["title"] = raw.get("title", "")
-      out["url"] = raw.get("url", "")
-      out["date"] = raw.get("published_at", "")
-      out["snippet"] = raw.get("source_name", "")
-  return out
+    if source == "sec":
+        out["title"] = f"{raw.get('ticker', '')} {raw.get('source_type', '')} {raw.get('published_date', '')}"
+        out["url"] = raw.get("url", "")
+        out["date"] = raw.get("published_date", "")
+        out["snippet"] = ""
+    elif source == "dart":
+        out["title"] = f"{raw.get('회사명', '')} {raw.get('보고서 종류', '')} {raw.get('기준연도/분기', '')}"
+        out["url"] = raw.get("url", "")
+        out["date"] = raw.get("제출일", "")
+        out["snippet"] = raw.get("기준연도/분기", "")
+    elif source == "youtube":
+        out["title"] = raw.get("title", "")
+        out["url"] = raw.get("url", "")
+        out["date"] = raw.get("published_at", "")
+        out["snippet"] = f"{raw.get('duration_minutes', 0)} min"
+    elif source == "papers":
+        out["title"] = raw.get("title", "")
+        out["url"] = raw.get("pdf_url", "") or raw.get("main_url", "")
+        out["date"] = str(raw.get("year", ""))
+        out["snippet"] = f"{raw.get('authors', '')} | {raw.get('venue', '')}"
+    elif source == "news":
+        out["title"] = raw.get("title", "")
+        out["url"] = raw.get("url", "")
+        out["date"] = raw.get("published_at", "")
+        out["snippet"] = raw.get("source_name", "")
+    return out
 
 
 @app.get("/health")
