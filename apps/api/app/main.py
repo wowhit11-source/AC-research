@@ -3,6 +3,8 @@ AC-research API. FastAPI app.
 Endpoints: GET /health, POST /api/research, GET /api/research/{slug}/excel
 Production: Render (port from PORT env, default 10000). CORS via ALLOWED_ORIGINS.
 """
+from __future__ import annotations
+
 import io
 import os
 import time
@@ -69,12 +71,20 @@ def health():
 
 
 @app.post("/api/research", response_model=ResearchResponse)
-def research(body: ResearchRequest):
+def research(body: ResearchRequest, daily_only: bool = False):
+    """
+    daily_only:
+      - False: 기존과 동일 (5y 10-K, 4x 10-Q, 1y 8-K, DART 5y/4q/1y, YouTube 1y)
+      - True : SEC/DART/YouTube를 최근 24시간 이내 자료로 제한
+               (papers는 논문 특성상 그대로 유지)
+    """
     query = (body.query or "").strip()
     if not query:
         raise HTTPException(status_code=400, detail="query is required")
+
     slug = slugify(query)
-    cache_key = f"research:{slug}"
+    daily_flag = 1 if daily_only else 0
+    cache_key = f"research:{slug}:daily={daily_flag}"
 
     cached = cache_get(cache_key)
     if cached is not None:
@@ -93,7 +103,7 @@ def research(body: ResearchRequest):
         try:
             from app.services.dart import collect_dart_reports
 
-            rows = collect_dart_reports(query)
+            rows = collect_dart_reports(query, daily_only=daily_only)
             dart_data = {"items": [_normalize_item("dart", r) for r in rows], "raw": rows}
         except Exception as e:
             errors.append(ErrorItem(source="dart", message=str(e)))
@@ -102,7 +112,7 @@ def research(body: ResearchRequest):
         try:
             from app.services.sec import collect_sec_links
 
-            rows = collect_sec_links(query.upper())
+            rows = collect_sec_links(query.upper(), daily_only=daily_only)
             sec_data = {"items": [_normalize_item("sec", r) for r in rows], "raw": rows}
         except Exception as e:
             errors.append(ErrorItem(source="sec", message=str(e)))
@@ -111,12 +121,12 @@ def research(body: ResearchRequest):
     try:
         from app.services.youtube import search_youtube_videos
 
-        rows = search_youtube_videos(query, max_results=30)
+        rows = search_youtube_videos(query, max_results=30, daily_only=daily_only)
         youtube_list = [_normalize_item("youtube", r) for r in rows]
     except Exception as e:
         errors.append(ErrorItem(source="youtube", message=str(e)))
 
-    # Papers (pdf_url only)
+    # Papers (pdf_url only) — daily_only는 적용하지 않음
     try:
         from app.services.papers import search_papers
 
@@ -166,23 +176,38 @@ def research(body: ResearchRequest):
 
 
 @app.get("/api/research/{slug}/excel")
-def research_excel(slug: str):
-    """Return Excel file for cached research result. Filename: research_{slug}.xlsx."""
-    cache_key = f"research:{slug}"
+def research_excel(slug: str, daily_only: bool = False):
+    """
+    Return Excel file for cached research result.
+    Filename: research_{slug}.xlsx
+
+    daily_only는 /api/research 호출 시와 동일하게 맞춰야
+    대응되는 캐시를 찾을 수 있다.
+    """
+    daily_flag = 1 if daily_only else 0
+    cache_key = f"research:{slug}:daily={daily_flag}"
+
     cached = cache_get(cache_key)
     if not cached:
-        raise HTTPException(status_code=404, detail="Research result not found or expired. Run search first.")
+        raise HTTPException(
+            status_code=404,
+            detail="Research result not found or expired. Run search first (check daily_only flag).",
+        )
+
     results = cached.get("results") or {}
     buffer = io.BytesIO()
+
     with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
         if results.get("dart") and results["dart"].get("raw"):
             df = pd.DataFrame(results["dart"]["raw"])
             df.to_excel(writer, sheet_name="KOREA_SEC", index=False)
+
         if results.get("sec") and results["sec"].get("raw"):
             df = pd.DataFrame(results["sec"]["raw"])
             df.to_excel(writer, sheet_name="SEC", index=False)
+
         if results.get("youtube"):
-            rows = []
+            rows: list[dict[str, Any]] = []
             for it in results["youtube"]:
                 rows.append(
                     {
@@ -194,6 +219,7 @@ def research_excel(slug: str):
                 )
             if rows:
                 pd.DataFrame(rows).to_excel(writer, sheet_name="YouTube", index=False)
+
         if results.get("papers"):
             rows = []
             for it in results["papers"]:
@@ -210,6 +236,7 @@ def research_excel(slug: str):
                 )
             if rows:
                 pd.DataFrame(rows).to_excel(writer, sheet_name="Papers", index=False)
+
         if results.get("reports"):
             rows = []
             for it in results["reports"]:
