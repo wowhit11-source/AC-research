@@ -9,14 +9,15 @@ from urllib.parse import urlparse
 
 ALLOWED_REPORT_DOMAINS: Dict[str, int] = {
     # Global institutions / central banks / research
-    "bis.org": 120,
-    "imf.org": 115,
+    "imf.org": 110,
     "worldbank.org": 110,
     "oecd.org": 105,
     "ecb.europa.eu": 105,
     "federalreserve.gov": 105,
     "bankofengland.co.uk": 100,
-    "nber.org": 95,
+    "nber.org": 90,
+    "adb.org": 90,
+    "bis.org": 90,
     "ssrn.com": 75,
     "arxiv.org": 60,
 
