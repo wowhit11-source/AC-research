@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 
 type Row = {
+  query?: string;
   source_type?: string;
   url?: string;
   published_date?: string;
@@ -11,7 +12,7 @@ type Row = {
   date?: string;
 };
 
-type SortKey = keyof Row;
+type SortKey = keyof Row;  // "query" | "source_type" | "url" | ...
 type SortDir = "asc" | "desc";
 
 function parseDate(value?: string) {
@@ -53,6 +54,9 @@ export default function SecResultsTable({
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [copied, setCopied] = useState(false);
+
+  // query 컬럼이 하나라도 있으면 다중 검색 결과 → 컬럼 표시
+  const hasQueryCol = rows.some((r) => r.query && r.query.trim() !== "");
 
   const sortedRows = useMemo(() => {
     const copy = [...rows];
@@ -116,6 +120,13 @@ export default function SecResultsTable({
         <table style={styles.table}>
           <thead>
             <tr>
+              {hasQueryCol && (
+                <th style={styles.th}>
+                  <button style={styles.thButton} onClick={() => handleSort("query")}>
+                    query {sortIndicator("query")}
+                  </button>
+                </th>
+              )}
               <th style={styles.th}>
                 <button style={styles.thButton} onClick={() => handleSort("source_type")}>
                   source_type {sortIndicator("source_type")}
@@ -168,6 +179,9 @@ export default function SecResultsTable({
           <tbody>
             {sortedRows.map((row, idx) => (
               <tr key={`${row.url ?? "row"}-${idx}`} style={styles.tr}>
+                {hasQueryCol && (
+                  <td style={{ ...styles.td, ...styles.queryCell }}>{row.query ?? ""}</td>
+                )}
                 <td style={styles.td}>{row.source_type ?? ""}</td>
 
                 <td style={styles.td}>
@@ -261,5 +275,13 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 6px 20px rgba(80, 200, 120, 0.16)",
     transition: "transform 0.08s ease",
     userSelect: "none",
+  },
+  queryCell: {
+    fontWeight: 600,
+    color: "rgba(255, 180, 80, 0.95)",
+    whiteSpace: "nowrap",
+    maxWidth: 160,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
 };

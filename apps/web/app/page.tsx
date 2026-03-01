@@ -107,10 +107,13 @@ function countOf(data: ResearchResponse | null, tab: TabId) {
 
 export default function Home() {
   const [query, setQuery] = useState("");
+  const [multiQuery, setMultiQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [multiLoading, setMultiLoading] = useState(false);
   const [data, setData] = useState<ResearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("sec");
+  const [isMultiResult, setIsMultiResult] = useState(false);
 
   // 체크박스 UI는 유지하되, 현재 백엔드가 소스 필터를 받지 않으므로 실제 요청에는 영향 없음
   const [sources, setSources] = useState<TabId[]>(["sec", "youtube", "papers", "news"]);
@@ -120,6 +123,26 @@ export default function Home() {
 
   const toggleSource = (id: TabId) => {
     setSources((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const _setResult = (raw: any, multi: boolean) => {
+    const normalized: ResearchResponse = {
+      ...raw,
+      results: {
+        dart: unwrap(raw?.results?.dart),
+        sec: unwrap(raw?.results?.sec),
+        youtube: unwrap(raw?.results?.youtube),
+        papers: unwrap(raw?.results?.papers),
+        reports: unwrap(raw?.results?.reports),
+        news: unwrap(raw?.results?.news),
+      },
+    };
+    setData(normalized);
+    setIsMultiResult(multi);
+    const priority: TabId[] = ["reports", "news", "dart", "sec", "youtube", "papers"];
+    const firstNonEmpty =
+      priority.find((k) => (normalized.results?.[k]?.length ?? 0) > 0) || "sec";
+    setTab(firstNonEmpty);
   };
 
   const search = useCallback(async () => {
@@ -142,27 +165,7 @@ export default function Home() {
         throw new Error(t || `HTTP ${res.status}`);
       }
 
-      const raw = await res.json();
-
-      const normalized: ResearchResponse = {
-        ...raw,
-        results: {
-          dart: unwrap(raw?.results?.dart),
-          sec: unwrap(raw?.results?.sec),
-          youtube: unwrap(raw?.results?.youtube),
-          papers: unwrap(raw?.results?.papers),
-          reports: unwrap(raw?.results?.reports),
-          news: unwrap(raw?.results?.news),
-        },
-      };
-
-      setData(normalized);
-
-      // Reports 우선 노출 (있으면 Reports로, 없으면 News → 나머지 우선순위)
-      const priority: TabId[] = ["reports", "news", "dart", "sec", "youtube", "papers"];
-      const firstNonEmpty =
-        priority.find((k) => (normalized.results?.[k]?.length ?? 0) > 0) || "sec";
-      setTab(firstNonEmpty);
+      _setResult(await res.json(), false);
     } catch (e: any) {
       setError(e?.message ? String(e.message) : "Failed to fetch");
     } finally {
@@ -170,13 +173,45 @@ export default function Home() {
     }
   }, [query, dailyOnly]);
 
+  const searchMulti = useCallback(async () => {
+    const queries = multiQuery
+      .split("\n")
+      .map((q) => q.trim())
+      .filter(Boolean);
+    if (queries.length === 0) return;
+
+    setMultiLoading(true);
+    setError(null);
+    setData(null);
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/research/multi?daily_only=${dailyOnly}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queries, max_results: 10 }),
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `HTTP ${res.status}`);
+      }
+
+      _setResult(await res.json(), true);
+    } catch (e: any) {
+      setError(e?.message ? String(e.message) : "Failed to fetch");
+    } finally {
+      setMultiLoading(false);
+    }
+  }, [multiQuery, dailyOnly]);
+
   const downloadExcel = useCallback(() => {
     if (!data?.slug) return;
-    const url = `${BACKEND_URL}/api/research/${encodeURIComponent(
+    const endpoint = isMultiResult ? "multi" : "research";
+    const url = `${BACKEND_URL}/api/${endpoint === "multi" ? "research" : "research"}/${encodeURIComponent(
       data.slug
     )}/excel?daily_only=${dailyOnly}`;
     window.open(url, "_blank");
-  }, [data, dailyOnly]);
+  }, [data, dailyOnly, isMultiResult]);
 
   const tabs = useMemo(
     () => [
@@ -243,6 +278,7 @@ export default function Home() {
         "";
 
       return {
+        query: String(r?.query ?? ""),
         source_type: String(sourceType ?? ""),
         url: String(url ?? ""),
         published_date: String(published ?? ""),
@@ -253,18 +289,19 @@ export default function Home() {
     });
   }, [currentItems, tab]);
 
+  const multiTag = isMultiResult ? " (다중)" : "";
   const tableLabel =
     tab === "sec"
-      ? "SEC 결과 (미국)"
+      ? `SEC 결과 (미국)${multiTag}`
       : tab === "dart"
-      ? "DART 결과 (국내)"
+      ? `DART 결과 (국내)${multiTag}`
       : tab === "youtube"
-      ? "YouTube 결과"
+      ? `YouTube 결과${multiTag}`
       : tab === "papers"
-      ? "Papers 결과"
+      ? `Papers 결과${multiTag}`
       : tab === "reports"
-      ? "Reports 결과"
-      : "News 결과";
+      ? `Reports 결과${multiTag}`
+      : `News 결과${multiTag}`;
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -311,6 +348,7 @@ export default function Home() {
           marginBottom: 14,
         }}
       >
+        {/* 단일 검색 */}
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <input
             value={query}
@@ -331,7 +369,7 @@ export default function Home() {
           />
           <button
             onClick={search}
-            disabled={loading}
+            disabled={loading || multiLoading}
             style={{
               height: 40,
               padding: "0 14px",
@@ -339,11 +377,56 @@ export default function Home() {
               border: "1px solid rgba(255,255,255,0.14)",
               background: "rgba(255,255,255,0.10)",
               color: "#e6edf3",
-              cursor: loading ? "not-allowed" : "pointer",
+              cursor: (loading || multiLoading) ? "not-allowed" : "pointer",
               fontSize: 14,
             }}
           >
-            {loading ? "검색 중" : "검색"}
+            {loading ? "검색 중…" : "검색"}
+          </button>
+        </div>
+
+        <div style={{ height: 10 }} />
+
+        {/* 다중 검색 */}
+        <div style={{ fontSize: 13, opacity: 0.75, marginBottom: 6 }}>
+          다중 검색어 (줄바꿈으로 구분 · 유튜브/논문/뉴스/리포트 검색어당 최대 10개)
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <textarea
+            value={multiQuery}
+            onChange={(e) => setMultiQuery(e.target.value)}
+            placeholder={"예:\nAPPL\n삼성전자\nAI inference chip"}
+            rows={4}
+            style={{
+              flex: 1,
+              padding: "8px 12px",
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.25)",
+              color: "#e6edf3",
+              outline: "none",
+              fontSize: 13,
+              resize: "vertical",
+              fontFamily: "inherit",
+              lineHeight: 1.5,
+            }}
+          />
+          <button
+            onClick={searchMulti}
+            disabled={loading || multiLoading}
+            style={{
+              height: 40,
+              padding: "0 14px",
+              borderRadius: 10,
+              border: "1px solid rgba(255,80,80,0.5)",
+              background: multiLoading ? "rgba(255,80,80,0.3)" : "rgba(255,80,80,0.7)",
+              color: "#fff",
+              cursor: (loading || multiLoading) ? "not-allowed" : "pointer",
+              fontSize: 14,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {multiLoading ? "검색 중…" : "다중 검색"}
           </button>
         </div>
 
